@@ -205,7 +205,9 @@ export interface AnalyticsSummary {
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
-const isSupabaseConfigured = supabaseUrl !== "" && (supabaseAnonKey !== "" || supabaseServiceKey !== "");
+const isSupabaseConfigured = supabaseUrl !== "" && 
+                             supabaseUrl.startsWith("http") && 
+                             (supabaseAnonKey !== "" || supabaseServiceKey !== "");
 
 export const supabase = isSupabaseConfigured 
   ? createClient(supabaseUrl, supabaseServiceKey || supabaseAnonKey) 
