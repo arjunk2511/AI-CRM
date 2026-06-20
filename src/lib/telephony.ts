@@ -133,11 +133,13 @@ export const telephonyService = {
     };
 
     const target = langVoiceMap[language] || langVoiceMap["Kannada"];
+    const escapedText = escapeXmlValue(text);
+    const escapedWebhook = escapeXmlValue(webhookUrl);
 
     return `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-    <Say language="${target.lang}" voice="${target.voice}">${text}</Say>
-    <Gather input="speech" action="${webhookUrl}" language="${target.lang}" timeout="4" speechTimeout="auto">
+    <Say language="${target.lang}" voice="${target.voice}">${escapedText}</Say>
+    <Gather input="speech" action="${escapedWebhook}" language="${target.lang}" timeout="4" speechTimeout="auto">
         <Say language="${target.lang}" voice="${target.voice}">ದಯವಿಟ್ಟು ಉತ್ತರಿಸಿ.</Say>
     </Gather>
 </Response>`;
@@ -155,11 +157,23 @@ export const telephonyService = {
     };
 
     const target = langVoiceMap[language] || langVoiceMap["Kannada"];
+    const escapedText = escapeXmlValue(text);
+    const escapedPhone = escapeXmlValue(humanPhone);
 
     return `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-    <Say language="${target.lang}" voice="${target.voice}">${text}</Say>
-    <Dial>${humanPhone}</Dial>
+    <Say language="${target.lang}" voice="${target.voice}">${escapedText}</Say>
+    <Dial>${escapedPhone}</Dial>
 </Response>`;
   }
 };
+
+export function escapeXmlValue(value: string): string {
+  if (!value) return "";
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
+}

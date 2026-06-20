@@ -1,5 +1,85 @@
 import { NextRequest, NextResponse } from "next/server";
 import { dbService } from "@/lib/db";
+import { escapeXmlValue } from "@/lib/telephony";
+
+// Simple XML tag balancing and unescaped ampersand validator
+function validateXml(xml: string): { valid: boolean; error?: string } {
+  // Check for raw unescaped ampersands first.
+  // Any & must be followed by a valid XML entity reference code (like amp;, lt;, gt;, quot;, apos;, #123;, #xab;)
+  const ampRegex = /&(?!([a-zA-Z0-9#]+);)/g;
+  if (ampRegex.test(xml)) {
+    return { valid: false, error: "Unescaped ampersand found in XML" };
+  }
+
+  const stack: string[] = [];
+  const tagTokenRegex = /<([^>]+)>/g;
+  let tokenMatch;
+
+  while ((tokenMatch = tagTokenRegex.exec(xml)) !== null) {
+    const content = tokenMatch[1].trim();
+    if (content.startsWith("?")) {
+      // XML declarations skip
+      continue;
+    }
+    if (content.startsWith("/")) {
+      // Closing tag
+      const tagName = content.slice(1).trim().split(/\s+/)[0];
+      const lastTag = stack.pop();
+      if (lastTag !== tagName) {
+        return { 
+          valid: false, 
+          error: `Mismatched closing tag: expected </${lastTag || "none"}>, but found </${tagName}>` 
+        };
+      }
+    } else if (content.endsWith("/")) {
+      // Self-closing tag
+      const tagName = content.slice(0, -1).trim().split(/\s+/)[0];
+      if (!tagName) {
+        return { valid: false, error: "Empty tag name" };
+      }
+    } else {
+      // Opening tag
+      const tagName = content.split(/\s+/)[0];
+      stack.push(tagName);
+    }
+  }
+
+  if (stack.length > 0) {
+    return { valid: false, error: `Unclosed tags: ${stack.join(", ")}` };
+  }
+
+  return { valid: true };
+}
+
+// Build and validate NextResponse
+function buildNextResponse(xmlContent: string): NextResponse {
+  const validation = validateXml(xmlContent);
+  if (!validation.valid) {
+    console.error("XML Generation Error:", validation.error);
+    console.error("Malformed XML content:", xmlContent);
+    
+    // Fallback safe XML
+    const safeFallback = `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+    <Say>ಕ್ಷಮಿಸಿ, ಸಂಪರ್ಕದಲ್ಲಿ ದೋಷವಾಗಿದೆ.</Say>
+    <Hangup/>
+</Response>`;
+    
+    return new NextResponse(safeFallback, {
+      headers: { 
+        "Content-Type": "application/xml",
+        "Cache-Control": "no-cache"
+      }
+    });
+  }
+
+  return new NextResponse(xmlContent, {
+    headers: { 
+      "Content-Type": "application/xml",
+      "Cache-Control": "no-cache"
+    }
+  });
+}
 
 // Handle GET requests (verification or manual triggers)
 export async function GET(request: NextRequest) {
@@ -43,6 +123,15 @@ async function handleTelephonyRequest(request: NextRequest) {
           params = { ...params, ...jsonBody };
         } catch (jsonErr) {}
       }
+    }
+
+    // Support Endpoint test: GET /api/exotel?test=true
+    if (params.test === "true") {
+      const testXml = `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Say>Hello from Sawara AI</Say>
+</Response>`;
+      return buildNextResponse(testXml);
     }
 
     // Standard carrier metadata
@@ -98,8 +187,8 @@ async function handleTelephonyRequest(request: NextRequest) {
       await dbService.createMessage(newCall.id, "assistant", greetingText);
 
       // XML Redirecting to ElevenLabs streaming audio & Gather input
-      const playUrl = `${webhookHost}/api/voice/play?text=${encodeURIComponent(greetingText)}&agentId=${agent.id}`;
-      const gatherAction = `${webhookHost}/api/exotel?conversationId=${newCall.id}&agentId=${agent.id}`;
+      const playUrl = escapeXmlValue(`${webhookHost}/api/voice/play?text=${encodeURIComponent(greetingText)}&agentId=${agent.id}`);
+      const gatherAction = escapeXmlValue(`${webhookHost}/api/exotel?conversationId=${newCall.id}&agentId=${agent.id}`);
       
       const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
@@ -108,9 +197,7 @@ async function handleTelephonyRequest(request: NextRequest) {
     </Gather>
 </Response>`;
 
-      return new NextResponse(xml, {
-        headers: { "Content-Type": "application/xml" }
-      });
+      return buildNextResponse(xml);
     }
 
     // 4. ACTIVE CALL DIALOGUE LOOP (Speech response phase)
@@ -139,15 +226,15 @@ async function handleTelephonyRequest(request: NextRequest) {
       // Log assistant response
       await dbService.createMessage(conversationId, "assistant", replyText);
 
-      const playUrl = `${webhookHost}/api/voice/play?text=${encodeURIComponent(replyText)}&agentId=${agent.id}`;
-      const gatherAction = `${webhookHost}/api/exotel?conversationId=${conversationId}&agentId=${agent.id}`;
+      const playUrl = escapeXmlValue(`${webhookHost}/api/voice/play?text=${encodeURIComponent(replyText)}&agentId=${agent.id}`);
+      const gatherAction = escapeXmlValue(`${webhookHost}/api/exotel?conversationId=${conversationId}&agentId=${agent.id}`);
 
       let xml = "";
 
       if (chatData.escalated) {
         // Transfer to human support representative
         const businessDetails = await dbService.getBusiness(agent.business_id);
-        const humanForwardPhone = businessDetails?.phone || "+91 98860 12345";
+        const humanForwardPhone = escapeXmlValue(businessDetails?.phone || "+91 98860 12345");
         
         xml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
@@ -164,22 +251,19 @@ async function handleTelephonyRequest(request: NextRequest) {
 </Response>`;
       }
 
-      return new NextResponse(xml, {
-        headers: { "Content-Type": "application/xml" }
-      });
+      return buildNextResponse(xml);
     }
 
     // Catch all empty response if loops are terminated
-    return new NextResponse(`<?xml version="1.0" encoding="UTF-8"?><Response><Hangup/></Response>`, {
-      headers: { "Content-Type": "application/xml" }
-    });
+    const emptyXml = `<?xml version="1.0" encoding="UTF-8"?><Response><Hangup/></Response>`;
+    return buildNextResponse(emptyXml);
 
   } catch (error: any) {
     console.error("Exotel webhook callback error:", error);
     
     // Return graceful audio error playing message in XML
     const errorText = "ಕ್ಷಮಿಸಿ, ಸಂಪರ್ಕದಲ್ಲಿ ತೊಂದರೆಯಾಗಿದೆ. ದಯವಿಟ್ಟು ನಂತರ ಪ್ರಯತ್ನಿಸಿ.";
-    const errPlayUrl = `${webhookHost}/api/voice/play?text=${encodeURIComponent(errorText)}&agentId=${agentId}`;
+    const errPlayUrl = escapeXmlValue(`${webhookHost}/api/voice/play?text=${encodeURIComponent(errorText)}&agentId=${agentId}`);
     
     const errXml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
@@ -187,8 +271,6 @@ async function handleTelephonyRequest(request: NextRequest) {
     <Hangup/>
 </Response>`;
 
-    return new NextResponse(errXml, {
-      headers: { "Content-Type": "application/xml" }
-    });
+    return buildNextResponse(errXml);
   }
 }

@@ -1,6 +1,78 @@
 import { NextRequest, NextResponse } from "next/server";
 import { dbService } from "@/lib/db";
-import { telephonyService } from "@/lib/telephony";
+import { telephonyService, escapeXmlValue } from "@/lib/telephony";
+
+// Simple XML tag balancing and unescaped ampersand validator
+function validateXml(xml: string): { valid: boolean; error?: string } {
+  // Check for raw unescaped ampersands first.
+  // Any & must be followed by a valid XML entity reference code (like amp;, lt;, gt;, quot;, apos;, #123;, #xab;)
+  const ampRegex = /&(?!([a-zA-Z0-9#]+);)/g;
+  if (ampRegex.test(xml)) {
+    return { valid: false, error: "Unescaped ampersand found in XML" };
+  }
+
+  const stack: string[] = [];
+  const tagTokenRegex = /<([^>]+)>/g;
+  let tokenMatch;
+
+  while ((tokenMatch = tagTokenRegex.exec(xml)) !== null) {
+    const content = tokenMatch[1].trim();
+    if (content.startsWith("?")) {
+      // XML declarations skip
+      continue;
+    }
+    if (content.startsWith("/")) {
+      // Closing tag
+      const tagName = content.slice(1).trim().split(/\s+/)[0];
+      const lastTag = stack.pop();
+      if (lastTag !== tagName) {
+        return { 
+          valid: false, 
+          error: `Mismatched closing tag: expected </${lastTag || "none"}>, but found </${tagName}>` 
+        };
+      }
+    } else if (content.endsWith("/")) {
+      // Self-closing tag
+      const tagName = content.slice(0, -1).trim().split(/\s+/)[0];
+      if (!tagName) {
+        return { valid: false, error: "Empty tag name" };
+      }
+    } else {
+      // Opening tag
+      const tagName = content.split(/\s+/)[0];
+      stack.push(tagName);
+    }
+  }
+
+  if (stack.length > 0) {
+    return { valid: false, error: `Unclosed tags: ${stack.join(", ")}` };
+  }
+
+  return { valid: true };
+}
+
+function buildNextResponse(xmlContent: string): NextResponse {
+  const validation = validateXml(xmlContent);
+  if (!validation.valid) {
+    console.error("XML Generation Error:", validation.error);
+    console.error("Malformed XML content:", xmlContent);
+    const safeFallback = `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+    <Say language="kn-IN" voice="Google.kn-IN-Standard-A">ಕ್ಷಮಿಸಿ, ಸಂಪರ್ಕದಲ್ಲಿ ದೋಷವಾಗಿದೆ. ದಯವಿಟ್ಟು ಮತ್ತೊಮ್ಮೆ ಪ್ರಯತ್ನಿಸಿ.</Say>
+    <Hangup/>
+</Response>`;
+    return new NextResponse(safeFallback, {
+      headers: { "Content-Type": "application/xml" }
+    });
+  }
+
+  return new NextResponse(xmlContent, {
+    headers: {
+      "Content-Type": "application/xml",
+      "Cache-Control": "no-cache"
+    }
+  });
+}
 
 // Telephony Provider Webhook (processes URL-encoded POST requests from Twilio / Exotel)
 export async function POST(request: NextRequest) {
@@ -93,12 +165,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Return TwiML XML payload response to Telephony Carrier
-    return new NextResponse(replyXml, {
-      headers: {
-        "Content-Type": "application/xml",
-        "Cache-Control": "no-cache"
-      }
-    });
+    return buildNextResponse(replyXml);
 
   } catch (error: any) {
     console.error("Telephony Webhook processing error:", error);
@@ -110,8 +177,6 @@ export async function POST(request: NextRequest) {
     <Hangup/>
 </Response>`;
     
-    return new NextResponse(fallbackXml, {
-      headers: { "Content-Type": "application/xml" }
-    });
+    return buildNextResponse(fallbackXml);
   }
 }
