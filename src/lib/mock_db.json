@@ -1,0 +1,527 @@
+{
+  "businesses": [
+    {
+      "id": "demo-business-id",
+      "user_id": "demo-user-id",
+      "business_name": "SmartMop India",
+      "industry": "Consumer Electronics",
+      "phone": "+91 98860 12345",
+      "created_at": "2026-06-20T18:18:04.283Z"
+    },
+    {
+      "id": "bus-3uv477vro",
+      "user_id": "usr-i4p6gwrt1",
+      "business_name": "caspian",
+      "description": "Customer service line for caspian.",
+      "category": "Consumer Electronics",
+      "address": "India",
+      "phone": "7981629660",
+      "email": "contact@caspian.com",
+      "website": "https://caspian.com",
+      "working_hours": "09:00 - 18:00",
+      "service_locations": "All India",
+      "created_at": "2026-06-20T18:35:06.182Z"
+    }
+  ],
+  "agents": [
+    {
+      "id": "demo-agent-id",
+      "business_id": "demo-business-id",
+      "name": "ಕುಮಾರ್ (Kumar)",
+      "language": "Kannada",
+      "voice_provider": "native",
+      "voice_id": "kn-IN-Wavenet-A",
+      "system_prompt": "You are Kumar, a friendly sales assistant for SmartMop India. You speak polite and natural Kannada. Help the customer with pricing, battery life, and warranty, using the knowledge base facts provided. Keep your answers brief and conversational, since this is a voice-bot call.",
+      "created_at": "2026-06-20T18:18:04.283Z"
+    },
+    {
+      "id": "agent-c1qiej3x5",
+      "business_id": "demo-business-id",
+      "name": "sawara",
+      "personality": "Professional voice agent builder representative.",
+      "language": "Kannada",
+      "greeting_message": "ನಮಸ್ಕಾರ. SmartMop ಗೆ ಸ್ವಾಗತ. ನಾನು ಸವಾರಾ, ನಿಮ್ಮ AI ಸಹಾಯಕ. SmartMop ಬಗ್ಗೆ ಮಾಹಿತಿ, ಬೆಲೆ, ಡೆಮೊ, ಆರ್ಡರ್ ಸ್ಥಿತಿ ಅಥವಾ ಗ್ರಾಹಕ ಬೆಂಬಲಕ್ಕೆ ನಾನು ಸಹಾಯ ಮಾಡಬಹುದು. ನಾನು ಹೇಗೆ ಸಹಾಯ ಮಾಡಬಹುದು?",
+      "working_hours": "09:00 - 18:00",
+      "voice_provider": "elevenlabs",
+      "voice_id": "kn-IN-Wavenet-A",
+      "system_prompt": "You are Sawara, the official Kannada AI Voice Employee of SmartMop.\n\nROLE:\nYou are a professional customer support executive, sales representative, and product expert for SmartMop.\n\nLANGUAGE:\nSpeak primarily in Kannada.\nIf the customer speaks English, Hindi, Telugu, or Tamil, switch naturally to that language.\n\nPERSONALITY:\n\n* Friendly\n* Professional\n* Polite\n* Patient\n* Helpful\n* Human-like\n* Never robotic\n\nCONVERSATION RULES:\n\n* Keep responses short and natural.\n* Speak like a real customer support executive.\n* Never sound like an AI.\n* Ask follow-up questions when needed.\n* Never interrupt customers.\n* Always acknowledge customer concerns.\n\nSMARTMOP PRODUCT INFORMATION:\n\nProduct Name: SmartMop\n\nPrice: ₹2999\n\nWater Tank: 500ml\n\nBattery Backup: 45 Minutes\n\nCoverage Area: 2000+ Sq.Ft\n\nUsage: 4 to 6 Days on normal usage\n\nWarranty:\n\n* 3 Months on Mop\n* 6 Months on Battery and Charger\n\nMade In:\nMysore, India\n\nCOMMON CUSTOMER QUESTIONS:\n\nIf customer asks price:\n\"SmartMop ಬೆಲೆ ₹2999 ಆಗಿದೆ.\"\n\nIf customer asks battery:\n\"ಒಂದು ಚಾರ್ಜ್‌ನಲ್ಲಿ ಸುಮಾರು 45 ನಿಮಿಷಗಳವರೆಗೆ ಕಾರ್ಯನಿರ್ವಹಿಸುತ್ತದೆ.\"\n\nIf customer asks warranty:\n\"ಮೋಪ್‌ಗೆ 3 ತಿಂಗಳ ವಾರಂಟಿ ಮತ್ತು ಬ್ಯಾಟರಿ ಹಾಗೂ ಚಾರ್ಜರ್‌ಗೆ 6 ತಿಂಗಳ ವಾರಂಟಿ ಇದೆ.\"\n\nIf customer asks delivery:\n\"ಸಾಮಾನ್ಯವಾಗಿ 3 ರಿಂದ 7 ವ್ಯವಹಾರ ದಿನಗಳಲ್ಲಿ ಡೆಲಿವರಿ ಆಗುತ್ತದೆ.\"\n\nLEAD COLLECTION:\n\nIf customer is interested:\nCollect:\n\n* Name\n* Phone Number\n* City\n* Requirement\n\nStore as lead.\n\nDEMO BOOKING:\n\nIf customer wants demo:\nAsk:\n\n* Name\n* Mobile Number\n* City\n* Preferred Date\n* Preferred Time\n\nConfirm booking.\n\nANGRY CUSTOMER HANDLING:\n\nIf customer is angry:\n\n* Apologize politely.\n* Stay calm.\n* Never argue.\n* Gather details.\n* Offer human assistance.\n\nExample:\n\"ನಿಮಗೆ ಆಗಿರುವ ತೊಂದರೆಗೆ ವಿಷಾದಿಸುತ್ತೇನೆ. ದಯವಿಟ್ಟು ಸಮಸ್ಯೆಯ ವಿವರವನ್ನು ತಿಳಿಸಿ.\"\n\nORDER TRACKING:\n\nIf customer asks order status:\nRequest:\n\n* Order ID\n  or\n* Registered Mobile Number\n\nREFUND REQUESTS:\n\nIf customer asks for refund:\nRequest:\n\n* Order ID\n* Reason for refund\n\nCreate support request.\n\nHUMAN ESCALATION:\n\nTransfer to human if:\n\n* Customer asks for manager.\n* Customer repeatedly requests human support.\n* Refund approval required.\n* Complaint cannot be resolved.\n* Customer becomes extremely frustrated.\n\nEND OF CALL:\n\nBefore ending:\nAsk:\n\"ಇನ್ನೇನಾದರೂ ಸಹಾಯ ಬೇಕೇ?\"\n\nIf no:\n\"SmartMop ಅನ್ನು ಸಂಪರ್ಕಿಸಿದಕ್ಕಾಗಿ ಧನ್ಯವಾದಗಳು. ನಿಮ್ಮ ದಿನ ಶುಭವಾಗಿರಲಿ.\"\n\nIMPORTANT:\n\nNever invent information.\nNever promise delivery dates.\nNever make false claims.\nOnly provide information available in SmartMop knowledge base.\nAlways remain professional and helpful.\n",
+      "escalation_rules": "Transfer to manager on anger or refund request.",
+      "fallback_response": "Let me check with a live agent.",
+      "created_at": "2026-06-20T18:43:22.175Z"
+    }
+  ],
+  "knowledge_base": [
+    {
+      "id": "faq-1",
+      "business_id": "demo-business-id",
+      "question": "ಬೆಲೆ ಎಷ್ಟು?",
+      "answer": "SmartMop ಬೆಲೆ ಕೇವಲ ₹2999 ಆಗಿದೆ.",
+      "created_at": "2026-06-20T18:18:04.283Z"
+    },
+    {
+      "id": "faq-2",
+      "business_id": "demo-business-id",
+      "question": "ಬ್ಯಾಟರಿ ಎಷ್ಟು ಸಮಯ ಬರುತ್ತದೆ?",
+      "answer": "ಇದರ ಶಕ್ತಿಶಾಲಿ ಬ್ಯಾಟರಿ ಒಂದು ಬಾರಿ ಪೂರ್ಣ ಚಾರ್ಜ್ ಮಾಡಿದರೆ 45 ನಿಮಿಷಗಳ ಕಾಲ ನಿರಂತರವಾಗಿ ಕೆಲಸ ಮಾಡುತ್ತದೆ.",
+      "created_at": "2026-06-20T18:18:04.283Z"
+    },
+    {
+      "id": "faq-3",
+      "business_id": "demo-business-id",
+      "question": "ವಾರಂಟಿ ಎಷ್ಟು ತಿಂಗಳು?",
+      "answer": "ಸ್ಮಾರ್ಟ್ ಮಾಪ್ ಮೇಲೆ ನಾವು 3 ತಿಂಗಳ ಅಧಿಕೃತ ವಾರಂಟಿ ನೀಡುತ್ತೇವೆ.",
+      "created_at": "2026-06-20T18:18:04.283Z"
+    },
+    {
+      "id": "faq-4",
+      "business_id": "demo-business-id",
+      "question": "ಹೋಮ್ ಡೆಲಿವರಿ ಇದೆಯೇ?",
+      "answer": "ಹೌದು, ಕರ್ನಾಟಕದಾದ್ಯಂತ ನಾವು ಉಚಿತ ಹೋಮ್ ಡೆಲಿವರಿ ನೀಡುತ್ತೇವೆ.",
+      "created_at": "2026-06-20T18:18:04.283Z"
+    },
+    {
+      "id": "faq-sgh55v81f",
+      "business_id": "demo-business-id",
+      "question": "SmartMop ಬೆಲೆ ಎಷ್ಟು?  SmartMop ಯಾವ ಯಾವ ಫ್ಲೋರ್‌ಗಳಿಗೆ ಸೂಕ್ತ?  ಬ್ಯಾಟರಿ ಎಷ್ಟು ಸಮಯ ಕೆಲಸ ಮಾಡುತ್ತದೆ?  ಒಂದು ಬಾರಿ ಚಾರ್ಜ್ ಮಾಡಿದರೆ ಎಷ್ಟು ದಿನ ಬಳಸಬಹುದು?  ನೀರಿನ ಟ್ಯಾಂಕ್ ಸಾಮರ್ಥ್ಯ ಎಷ್ಟು?  ಎಷ್ಟು ಪ್ರದೇಶವನ್ನು ಸ್ವಚ್ಛಗೊಳಿಸಬಹುದು?  ವಾರಂಟಿ ಇದೆಯೇ?  ಡೆಲಿವರಿ ಎಷ್ಟು ದಿನಗಳಲ್ಲಿ ಆಗುತ್ತದೆ?  ಕ್ಯಾಶ್ ಆನ್ ಡೆಲಿವರಿ ಇದೆಯೇ?  ಡೆಮೊ ಸಿಗುತ್ತದೆಯೇ?  ಇದು ಕೈಯಿಂದ ಒರೆಸುವ ಕೆಲಸವನ್ನು ಕಡಿಮೆ ಮಾಡುತ್ತದೆಯೇ?  ನಾನು ಹೇಗೆ ಆರ್ಡರ್ ಮಾಡಬಹುದು?  ರಿಫಂಡ್ ಪಾಲಿಸಿ ಏನು?  ನನ್ನ ಆರ್ಡರ್ ಎಲ್ಲಿದೆ?  SmartMop ಭಾರತದಲ್ಲಿ ತಯಾರಿಸಲ್ಪಟ್ಟಿದೆಯೇ?  ಇದು ಚಾರ್ಜ್ ಆಗಲು ಎಷ್ಟು ಸಮಯ ಬೇಕು?  ಬ್ಯಾಟರಿ ಬದಲಾಯಿಸಬಹುದೇ?  ಇದು ವಯಸ್ಸಾದವರಿಗೆ ಬಳಸಲು ಸುಲಭವೇ?  ಇದು ಮನೆ ಮತ್ತು ಆಫೀಸ್ ಎರಡಕ್ಕೂ ಸೂಕ್ತವೇ?  ನೀರು ಸ್ಪ್ರೇ ಹೇಗೆ ಕೆಲಸ ಮಾಡುತ್ತದೆ?  ಮೋಪ್ ಪ್ಯಾಡ್ ತೊಳೆಯಬಹುದೇ?  ಹೆಚ್ಚುವರಿ ಮೋಪ್ ಪ್ಯಾಡ್ ಸಿಗುತ್ತದೆಯೇ?  ಇದು ಮೂಲೆಗಳನ್ನೂ ಸ್ವಚ್ಛಗೊಳಿಸಬಹುದೇ?  ಉತ್ಪನ್ನ ಹಾಳಾಗಿ ಬಂದರೆ ಏನು ಮಾಡಬೇಕು?  ಸರ್ವಿಸ್ ಸೆಂಟರ್ ಇದೆಯೇ?  ಯಾವ ಬಣ್ಣಗಳಲ್ಲಿ ಲಭ್ಯವಿದೆ?  ಆಫರ್ ಅಥವಾ ಡಿಸ್ಕೌಂಟ್ ಇದೆಯೇ?  ಇದನ್ನು ಪ್ರತಿದಿನ ಬಳಸಬಹುದೇ?  ಇದು ಮಕ್ಕಳಿರುವ ಮನೆಗಳಿಗೆ ಸುರಕ್ಷಿತವೇ?  ನಿಮ್ಮ ಗ್ರಾಹಕ ಸಹಾಯವಾಣಿ ಸಂಖ್ಯೆ ಏನು?",
+      "answer": "SmartMop ಬೆಲೆ ₹2999 ಆಗಿದೆ.\n\nSmartMop ಟೈಲ್ಸ್, ಮಾರ್ಬಲ್, ಗ್ರಾನೈಟ್ ಮತ್ತು ಇತರೆ ಸ್ಮೂತ್ ಫ್ಲೋರ್‌ಗಳಿಗೆ ಸೂಕ್ತವಾಗಿದೆ.\n\nSmartMop ಬ್ಯಾಟರಿ ಸುಮಾರು 45 ನಿಮಿಷಗಳವರೆಗೆ ಕೆಲಸ ಮಾಡುತ್ತದೆ.\n\nಸಾಮಾನ್ಯ ಬಳಕೆಯಲ್ಲಿ ಒಂದು ಚಾರ್ಜ್‌ನಿಂದ 4 ರಿಂದ 6 ದಿನಗಳವರೆಗೆ ಬಳಸಬಹುದು.\n\nSmartMop ನಲ್ಲಿ 500ml ನೀರಿನ ಟ್ಯಾಂಕ್ ಇದೆ.\n\nSmartMop ಸುಮಾರು 2000+ ಚದರ ಅಡಿ ಪ್ರದೇಶವನ್ನು ಸ್ವಚ್ಛಗೊಳಿಸಬಹುದು.\n\nಮೋಪ್‌ಗೆ 3 ತಿಂಗಳ ವಾರಂಟಿ ಮತ್ತು ಬ್ಯಾಟರಿ ಹಾಗೂ ಚಾರ್ಜರ್‌ಗೆ 6 ತಿಂಗಳ ವಾರಂಟಿ ಇದೆ.\n\nಸಾಮಾನ್ಯವಾಗಿ 3 ರಿಂದ 7 ವ್ಯವಹಾರ ದಿನಗಳಲ್ಲಿ ಡೆಲಿವರಿ ಮಾಡಲಾಗುತ್ತದೆ.\n\nದಯವಿಟ್ಟು ನಿಮ್ಮ ಸ್ಥಳವನ್ನು ತಿಳಿಸಿ. ಕ್ಯಾಶ್ ಆನ್ ಡೆಲಿವರಿ ಲಭ್ಯತೆಯನ್ನು ಪರಿಶೀಲಿಸಲಾಗುತ್ತದೆ.\n\nಹೌದು, ಕೆಲವು ಪ್ರದೇಶಗಳಲ್ಲಿ ಡೆಮೊ ಸೌಲಭ್ಯ ಲಭ್ಯವಿದೆ.\n\nಹೌದು, SmartMop ಸ್ವಚ್ಛಗೊಳಿಸುವ ಕೆಲಸವನ್ನು ಸುಲಭ ಮತ್ತು ವೇಗವಾಗಿಸುತ್ತದೆ.\n\nನೀವು ನಮ್ಮ ವೆಬ್‌ಸೈಟ್ ಅಥವಾ ಅಧಿಕೃತ ಮಾರಾಟ ಪ್ರತಿನಿಧಿಗಳ ಮೂಲಕ ಆರ್ಡರ್ ಮಾಡಬಹುದು.\n\nರಿಫಂಡ್ ಅರ್ಹತೆ ಕಂಪನಿಯ ನಿಯಮಗಳು ಮತ್ತು ಷರತ್ತುಗಳ ಪ್ರಕಾರ ಪರಿಶೀಲಿಸಲಾಗುತ್ತದೆ.\n\nದಯವಿಟ್ಟು ನಿಮ್ಮ ಆರ್ಡರ್ ಐಡಿ ಅಥವಾ ಮೊಬೈಲ್ ಸಂಖ್ಯೆಯನ್ನು ನೀಡಿ.\n\nಹೌದು, SmartMop ಮೈಸೂರಿನಲ್ಲಿ ತಯಾರಿಸಲ್ಪಟ್ಟ ಉತ್ಪನ್ನವಾಗಿದೆ.\n\nಚಾರ್ಜ್ ಸಮಯ ಮಾದರಿಯ ಪ್ರಕಾರ ಬದಲಾಗಬಹುದು. ಹೆಚ್ಚಿನ ಮಾಹಿತಿಗಾಗಿ ಬೆಂಬಲ ತಂಡವನ್ನು ಸಂಪರ್ಕಿಸಿ.\n\nಬ್ಯಾಟರಿ ಬದಲಾವಣೆಯ ಕುರಿತು ಬೆಂಬಲ ತಂಡವನ್ನು ಸಂಪರ್ಕಿಸಿ.\n\nಹೌದು, SmartMop ಸರಳ ಮತ್ತು ಹಗುರವಾದ ವಿನ್ಯಾಸ ಹೊಂದಿರುವುದರಿಂದ ಬಳಸಲು ಸುಲಭವಾಗಿದೆ.\n\nಹೌದು, ಮನೆ ಮತ್ತು ಆಫೀಸ್ ಎರಡಕ್ಕೂ ಸೂಕ್ತವಾಗಿದೆ.\n\nಬಿಲ್ಟ್-ಇನ್ ಸ್ಪ್ರೇ ಸಿಸ್ಟಮ್ ಮೂಲಕ ನೀರನ್ನು ಸಮವಾಗಿ ಫ್ಲೋರ್ ಮೇಲೆ ಸಿಂಪಡಿಸುತ್ತದೆ.\n\nಹೌದು, ಮೋಪ್ ಪ್ಯಾಡ್ ತೆಗೆದು ತೊಳೆಯಬಹುದು ಮತ್ತು ಮರುಬಳಕೆ ಮಾಡಬಹುದು.\n\nಹೌದು, ಹೆಚ್ಚುವರಿ ಮೋಪ್ ಪ್ಯಾಡ್ ಲಭ್ಯತೆಯನ್ನು ಪರಿಶೀಲಿಸಲು ನಮ್ಮನ್ನು ಸಂಪರ್ಕಿಸಿ.\n\nಹೌದು, SmartMop ಮೂಲೆಗಳು ಮತ್ತು ತಲುಪಲು ಕಷ್ಟವಾದ ಸ್ಥಳಗಳನ್ನು ಸ್ವಚ್ಛಗೊಳಿಸಲು ಸಹಾಯಕವಾಗಿದೆ.\n\nಉತ್ಪನ್ನ ಹಾಳಾಗಿ ಬಂದರೆ ತಕ್ಷಣ ನಮ್ಮ ಬೆಂಬಲ ತಂಡವನ್ನು ಸಂಪರ್ಕಿಸಿ.\n\nಸರ್ವಿಸ್ ಮತ್ತು ವಾರಂಟಿ ಸಹಾಯಕ್ಕಾಗಿ ನಮ್ಮ ಗ್ರಾಹಕ ಬೆಂಬಲ ತಂಡವನ್ನು ಸಂಪರ್ಕಿಸಿ.\n\nಲಭ್ಯವಿರುವ ಬಣ್ಣಗಳ ಬಗ್ಗೆ ನಮ್ಮ ಮಾರಾಟ ತಂಡವನ್ನು ಸಂಪರ್ಕಿಸಿ.\n\nಪ್ರಸ್ತುತ ಆಫರ್‌ಗಳು ಮತ್ತು ಡಿಸ್ಕೌಂಟ್‌ಗಳಿಗಾಗಿ ನಮ್ಮನ್ನು ಸಂಪರ್ಕಿಸಿ.\n\nಹೌದು, SmartMop ಅನ್ನು ಪ್ರತಿದಿನ ಬಳಸಬಹುದು.\n\nಹೌದು, ಸರಿಯಾದ ರೀತಿಯಲ್ಲಿ ಬಳಸಿದರೆ ಇದು ಮನೆ ಬಳಕೆಗೆ ಸುರಕ್ಷಿತವಾಗಿದೆ.\n\nಗ್ರಾಹಕ ಸಹಾಯಕ್ಕಾಗಿ ದಯವಿಟ್ಟು ನಮ್ಮ ಅಧಿಕೃತ ಸಂಪರ್ಕ ಸಂಖ್ಯೆಯನ್ನು ಬಳಸಿ.",
+      "created_at": "2026-06-20T18:42:01.275Z"
+    }
+  ],
+  "conversations": [
+    {
+      "id": "call-1",
+      "business_id": "demo-business-id",
+      "agent_id": "demo-agent-id",
+      "customer_name": "ರವಿ (Ravi)",
+      "duration_seconds": 145,
+      "status": "completed",
+      "summary": "ಬೆಲೆ ಮತ್ತು ಬ್ಯಾಟರಿ ಬಗ್ಗೆ ವಿಚಾರಿಸಿದರು. ಖರೀದಿಸಲು ಆಸಕ್ತಿ ಹೊಂದಿದ್ದಾರೆ.",
+      "created_at": "2026-06-20T16:18:04.283Z"
+    },
+    {
+      "id": "call-2",
+      "business_id": "demo-business-id",
+      "agent_id": "demo-agent-id",
+      "customer_name": "ಗೀತಾ (Geetha)",
+      "duration_seconds": 210,
+      "status": "escalated",
+      "summary": "ವಾರಂಟಿ ಕ್ಲೈಮ್ ಮಾಡಲು ಬಯಸುತ್ತಾರೆ. ಸಂಕೀರ್ಣ ಪ್ರಶ್ನೆಯಾದ್ದರಿಂದ ಮಾನವ ಪ್ರತಿನಿಧಿಗೆ ವರ್ಗಾಯಿಸಲಾಗಿದೆ.",
+      "created_at": "2026-06-20T13:18:04.283Z"
+    },
+    {
+      "id": "conv-lr4q0tlho",
+      "business_id": "demo-business-id",
+      "agent_id": "demo-agent-id",
+      "customer_name": "Customer (23:48)",
+      "duration_seconds": 0,
+      "status": "active",
+      "summary": "",
+      "created_at": "2026-06-20T18:18:49.956Z"
+    },
+    {
+      "id": "conv-hpjst3mbb",
+      "business_id": "demo-business-id",
+      "agent_id": "demo-agent-id",
+      "customer_name": "Customer (23:48)",
+      "duration_seconds": 60,
+      "status": "completed",
+      "summary": "No RAG match. Falling back to generic details query.",
+      "created_at": "2026-06-20T18:18:49.958Z"
+    }
+  ],
+  "messages": [
+    {
+      "id": "m-1",
+      "conversation_id": "call-1",
+      "role": "user",
+      "content": "ನಮಸ್ಕಾರ, SmartMop ಬೆಲೆ ಎಷ್ಟು?",
+      "created_at": "2026-06-20T16:18:04.283Z"
+    },
+    {
+      "id": "m-2",
+      "conversation_id": "call-1",
+      "role": "assistant",
+      "content": "ನಮಸ್ಕಾರ! SmartMop ಬೆಲೆ ಕೇವಲ ₹2999 ಆಗಿದೆ. ಇದರಲ್ಲಿ ಉಚಿತ ಹೋಮ್ ಡೆಲಿವರಿ ಕೂಡ ಇದೆ.",
+      "created_at": "2026-06-20T16:18:14.283Z"
+    },
+    {
+      "id": "msg-8v5k33i6i",
+      "conversation_id": "conv-lr4q0tlho",
+      "role": "assistant",
+      "content": "ನಮಸ್ಕಾರ! ನಾನು ನಿಮಗೆ ಹೇಗೆ ಸಹಾಯ ಮಾಡಲಿ?",
+      "created_at": "2026-06-20T18:18:49.963Z"
+    },
+    {
+      "id": "msg-zokxgiavz",
+      "conversation_id": "conv-hpjst3mbb",
+      "role": "assistant",
+      "content": "ನಮಸ್ಕಾರ! ನಾನು ನಿಮಗೆ ಹೇಗೆ ಸಹಾಯ ಮಾಡಲಿ?",
+      "created_at": "2026-06-20T18:18:49.967Z"
+    },
+    {
+      "id": "msg-jfio5v84f",
+      "conversation_id": "conv-hpjst3mbb",
+      "role": "user",
+      "content": "ವಾರಂಟಿ ಇದೆಯೇ?",
+      "created_at": "2026-06-20T18:18:59.072Z"
+    },
+    {
+      "id": "msg-69cqov5ud",
+      "conversation_id": "conv-hpjst3mbb",
+      "role": "assistant",
+      "content": "ಕ್ಷಮಿಸಿ, ಆ ಬಗ್ಗೆ ನನ್ನ ಹತ್ತಿರ ಮಾಹಿತಿ ಇಲ್ಲ. ದಯವಿಟ್ಟು ಬೆಲೆ, ಬ್ಯಾಟರಿ ಅಥವಾ ವಾರಂಟಿ ಬಗ್ಗೆ ಕೇಳಿ.",
+      "created_at": "2026-06-20T18:18:59.279Z"
+    },
+    {
+      "id": "msg-8w0bi99e0",
+      "conversation_id": "call-gv4a0vcq0",
+      "role": "assistant",
+      "content": "ನಮಸ್ಕಾರ. SmartMop ಗೆ ಸ್ವಾಗತ. ನಾನು ಸವಾರಾ, ನಿಮ್ಮ AI ಸಹಾಯಕ. SmartMop ಬಗ್ಗೆ ಮಾಹಿತಿ, ಬೆಲೆ, ಡೆಮೊ, ಆರ್ಡರ್ ಸ್ಥಿತಿ ಅಥವಾ ಗ್ರಾಹಕ ಬೆಂಬಲಕ್ಕೆ ನಾನು ಸಹಾಯ ಮಾಡಬಹುದು. ನಾನು ಹೇಗೆ ಸಹಾಯ ಮಾಡಬಹುದು?",
+      "created_at": "2026-06-20T18:43:24.907Z"
+    },
+    {
+      "id": "msg-a35aq57i0",
+      "conversation_id": "call-zhboh3g88",
+      "role": "assistant",
+      "content": "ನಮಸ್ಕಾರ. SmartMop ಗೆ ಸ್ವಾಗತ. ನಾನು ಸವಾರಾ, ನಿಮ್ಮ AI ಸಹಾಯಕ. SmartMop ಬಗ್ಗೆ ಮಾಹಿತಿ, ಬೆಲೆ, ಡೆಮೊ, ಆರ್ಡರ್ ಸ್ಥಿತಿ ಅಥವಾ ಗ್ರಾಹಕ ಬೆಂಬಲಕ್ಕೆ ನಾನು ಸಹಾಯ ಮಾಡಬಹುದು. ನಾನು ಹೇಗೆ ಸಹಾಯ ಮಾಡಬಹುದು?",
+      "created_at": "2026-06-20T18:43:24.911Z"
+    },
+    {
+      "id": "msg-mqmpsaita",
+      "conversation_id": "call-zhboh3g88",
+      "role": "user",
+      "content": "how much smartmop price ",
+      "created_at": "2026-06-20T18:43:51.210Z"
+    },
+    {
+      "id": "msg-emm4vn1b6",
+      "conversation_id": "call-zhboh3g88",
+      "role": "assistant",
+      "content": "ಸ್ಮಾರ್ಟ್ ಮಾಪ್ ಪ್ರೊ ಬೆಲೆ ಕೇವಲ ₹2999 ಆಗಿದೆ. ಇದರಲ್ಲಿ ಶೇಕಡಾ 10 ರಷ್ಟು ರಿಯಾಯಿತಿ ಇದೆ.",
+      "created_at": "2026-06-20T18:43:51.268Z"
+    },
+    {
+      "id": "msg-3lzarbf39",
+      "conversation_id": "call-zhboh3g88",
+      "role": "user",
+      "content": "how it will works ",
+      "created_at": "2026-06-20T18:44:24.170Z"
+    },
+    {
+      "id": "msg-9kk0aedxn",
+      "conversation_id": "call-zhboh3g88",
+      "role": "assistant",
+      "content": "ನಮಸ್ಕಾರ! ಸ್ಮಾರ್ಟ್ ಮಾಪ್ ಇಂಡಿಯಾ ಕುಮಾರ್ ಮಾತನಾಡ್ತಿದ್ದೇನೆ. ಬೆಲೆ, ಬ್ಯಾಟರಿ ಅಥವಾ ವಾರಂಟಿ ಬಗ್ಗೆ ಕೇಳಿ.",
+      "created_at": "2026-06-20T18:44:24.189Z"
+    },
+    {
+      "id": "msg-66woip7qg",
+      "conversation_id": "call-zhboh3g88",
+      "role": "user",
+      "content": "how many days it will take time to delivery ",
+      "created_at": "2026-06-20T18:46:44.070Z"
+    },
+    {
+      "id": "msg-le3dge83b",
+      "conversation_id": "call-zhboh3g88",
+      "role": "assistant",
+      "content": "ನಮಸ್ಕಾರ! ಸ್ಮಾರ್ಟ್ ಮಾಪ್ ಇಂಡಿಯಾ ಕುಮಾರ್ ಮಾತನಾಡ್ತಿದ್ದೇನೆ. ಬೆಲೆ, ಬ್ಯಾಟರಿ ಅಥವಾ ವಾರಂಟಿ ಬಗ್ಗೆ ಕೇಳಿ.",
+      "created_at": "2026-06-20T18:46:44.092Z"
+    }
+  ],
+  "users": [
+    {
+      "id": "demo-user-id",
+      "email": "owner@smartmop.in",
+      "password_hash": "mock_password",
+      "role": "user",
+      "created_at": "2026-06-20T18:35:06.167Z"
+    },
+    {
+      "id": "admin-user-id",
+      "email": "admin@swara.ai",
+      "password_hash": "mock_admin_password",
+      "role": "super_admin",
+      "created_at": "2026-06-20T18:35:06.167Z"
+    },
+    {
+      "id": "usr-i4p6gwrt1",
+      "email": "cafe@company.com",
+      "password_hash": "mock_hash",
+      "role": "user",
+      "created_at": "2026-06-20T18:35:06.170Z"
+    }
+  ],
+  "products": [
+    {
+      "id": "prod-1",
+      "business_id": "demo-business-id",
+      "name": "SmartMop Pro",
+      "description": "Automatic cleaning robot with dynamic mapping and laser guides.",
+      "price": 2999,
+      "discount": 10,
+      "features": "45 min battery life, auto-docking charger, 3 cleaning speed levels",
+      "benefits": "Completely hands-free floor cleaning, quiet operation, works on marble and wood",
+      "warranty": "3 Months warranty on motor and battery",
+      "return_policy": "7-day replacement guarantee if defect is found",
+      "delivery_info": "Free delivery within 2 days in Karnataka",
+      "created_at": "2026-06-20T18:35:06.167Z"
+    },
+    {
+      "id": "prod-2",
+      "business_id": "demo-business-id",
+      "name": "SmartMop Ultra Brush",
+      "description": "Double scrubbing spin attachment for cleaning wet spillages.",
+      "price": 999,
+      "discount": 0,
+      "features": "Spinning microfibers, washable cloth pads, extendable handle",
+      "benefits": "Easy wet mopping, washable pads save money, cleans deep corners",
+      "warranty": "No warranty on accessories",
+      "return_policy": "Non-returnable item",
+      "delivery_info": "Shipped within 24 hours of order confirmation",
+      "created_at": "2026-06-20T18:35:06.167Z"
+    },
+    {
+      "id": "prod-vxvh13zi0",
+      "business_id": "demo-business-id",
+      "name": "smartmop",
+      "price": 3499,
+      "discount": 0,
+      "description": "Key Specifications\nCoverage Area: 2000+ sq.ft.\nWater Tank Capacity: 500ml\nCleaning Force: 12N\nBattery Runtime: 45 Minutes\nSingle Charge Usage: 4–6 Days\nPower Consumption: 8W\nOperation: Cordless\nCleaning Pad: Reusable Microfiber Cloth\nSuitable For: Tiles, Marble, Granite, Hardwood, Laminate & Hard Floors\nFeatures\nNo bucket required\nLightweight and easy to handle\nLow-noise operation\nFast floor cleaning\nEnergy-efficient design\nWashable and reusable microfiber pad\nEasy charging and maintenance\nDesigned for daily home and office cleaning\nHow It Works\nAttach the microfiber cloth.\nFill the 500ml water tank.\nTurn on the SmartMop and start cleaning.\nBenefits\nCleans large areas quickly\nReduces physical effort while mopping\nUses less water compared to traditional mops\nEliminates dirty bucket water\nSuitable for homes, apartments, offices, clinics, shops, and showrooms\nIdeal Customers\nHomemakers\nWorking Professionals\nSenior Citizens\nFamilies\nOffice Owners\nCommercial Establishments\nWarranty\nSmartMop Unit: 3 Months Warranty\nBattery: 6 Months Warranty\nCharger: 6 Months Warranty\nSmartMop One-Line Description\n\nSmartMop is a Made-in-India cordless electric spray mop with a 500ml water tank, 12N cleaning force, and 45-minute battery life, designed to clean up to 2000+ sq.ft. quickly and effortlessly.",
+      "features": "Premium grade specs",
+      "benefits": "Automated efficiency",
+      "warranty": "3 Months",
+      "return_policy": "7-day replacement",
+      "delivery_info": "NO Free delivery",
+      "created_at": "2026-06-20T18:38:49.731Z"
+    }
+  ],
+  "services": [
+    {
+      "id": "serv-1",
+      "business_id": "demo-business-id",
+      "name": "Mop Deep Repair Service",
+      "description": "Full service overhaul of the robot including battery replacement and motor cleaning.",
+      "pricing": "₹1500 per visit",
+      "coverage_area": "Bengaluru City limits only",
+      "duration": "1 to 2 hours",
+      "terms": "Parts replacement cost will be charged separately if out of warranty",
+      "created_at": "2026-06-20T18:35:06.167Z"
+    }
+  ],
+  "documents": [
+    {
+      "id": "doc-1",
+      "business_id": "demo-business-id",
+      "name": "SmartMop Brochure.pdf",
+      "file_type": "pdf",
+      "text_content": "SmartMop Pro brochure containing technical parameters: motor power 120W, charger input 220V, tank capacity 350ml, noise level 60dB. Operating temperatures 5-45C.",
+      "created_at": "2026-06-20T18:35:06.167Z"
+    },
+    {
+      "id": "doc-dpo5f2mmf",
+      "business_id": "demo-business-id",
+      "name": "smartmop",
+      "file_type": "pdf",
+      "text_content": "Question: SmartMop ಬೆಲೆ ಎಷ್ಟು?\nAnswer: SmartMop ಬೆಲೆ ₹2999 ಆಗಿದೆ.\n\nQuestion: SmartMop ಯಾವ ಯಾವ ಫ್ಲೋರ್‌ಗಳಿಗೆ ಸೂಕ್ತ?\nAnswer: SmartMop ಟೈಲ್ಸ್, ಮಾರ್ಬಲ್, ಗ್ರಾನೈಟ್, ವುಡನ್ ಮತ್ತು ಇತರೆ ಸ್ಮೂತ್ ಫ್ಲೋರ್‌ಗಳಿಗೆ ಸೂಕ್ತವಾಗಿದೆ.\n\nQuestion: ಬ್ಯಾಟರಿ ಎಷ್ಟು ಸಮಯ ಕೆಲಸ ಮಾಡುತ್ತದೆ?\nAnswer: SmartMop ಒಂದು ಚಾರ್ಜ್‌ನಲ್ಲಿ ಸುಮಾರು 45 ನಿಮಿಷಗಳವರೆಗೆ ಕೆಲಸ ಮಾಡುತ್ತದೆ.\n\nQuestion: ಒಂದು ಬಾರಿ ಚಾರ್ಜ್ ಮಾಡಿದರೆ ಎಷ್ಟು ದಿನ ಬಳಸಬಹುದು?\nAnswer: ಸಾಮಾನ್ಯ ಬಳಕೆಯಲ್ಲಿ 4 ರಿಂದ 6 ದಿನಗಳವರೆಗೆ ಬಳಸಬಹುದು.\n\nQuestion: ನೀರಿನ ಟ್ಯಾಂಕ್ ಸಾಮರ್ಥ್ಯ ಎಷ್ಟು?\nAnswer: SmartMop ನಲ್ಲಿ 500ml ನೀರಿನ ಟ್ಯಾಂಕ್ ಇದೆ.\n\nQuestion: ಎಷ್ಟು ಪ್ರದೇಶವನ್ನು ಸ್ವಚ್ಛಗೊಳಿಸಬಹುದು?\nAnswer: SmartMop ಸುಮಾರು 2000+ ಚದರ ಅಡಿ ಪ್ರದೇಶವನ್ನು ಸ್ವಚ್ಛಗೊಳಿಸಬಹುದು.\n\nQuestion: ವಾರಂಟಿ ಇದೆಯೇ?\nAnswer: Mop ಗೆ 3 ತಿಂಗಳ ವಾರಂಟಿ ಮತ್ತು ಬ್ಯಾಟರಿ ಹಾಗೂ ಚಾರ್ಜರ್‌ಗೆ 6 ತಿಂಗಳ ವಾರಂಟಿ ಇದೆ.\n\nQuestion: ಡೆಲಿವರಿ ಎಷ್ಟು ದಿನಗಳಲ್ಲಿ ಆಗುತ್ತದೆ?\nAnswer: ಸಾಮಾನ್ಯವಾಗಿ 3 ರಿಂದ 7 ವ್ಯವಹಾರ ದಿನಗಳಲ್ಲಿ ಡೆಲಿವರಿ ಆಗುತ್ತದೆ.\n\nQuestion: ಕ್ಯಾಶ್ ಆನ್ ಡೆಲಿವರಿ ಇದೆಯೇ?\nAnswer: ದಯವಿಟ್ಟು ನಿಮ್ಮ ಸ್ಥಳವನ್ನು ತಿಳಿಸಿ. ಲಭ್ಯತೆ ಪರಿಶೀಲಿಸಿ ಮಾಹಿತಿ ನೀಡಲಾಗುತ್ತದೆ.\n\nQuestion: ಡೆಮೊ ಸಿಗುತ್ತದೆಯೇ?\nAnswer: ಹೌದು, ಕೆಲವು ಪ್ರದೇಶಗಳಲ್ಲಿ ಡೆಮೊ ಸೌಲಭ್ಯ ಲಭ್ಯವಿದೆ. ದಯವಿಟ್ಟು ನಿಮ್ಮ ನಗರವನ್ನು ತಿಳಿಸಿ.\n\nQuestion: ಇದು ಕೈಯಿಂದ ಒರೆಸುವ ಕೆಲಸವನ್ನು ಕಡಿಮೆ ಮಾಡುತ್ತದೆಯೇ?\nAnswer: ಹೌದು, SmartMop ಸ್ವಯಂಚಾಲಿತ ಸ್ಪ್ರೇ ಮತ್ತು ಮೋಪಿಂಗ್ ಸೌಲಭ್ಯದಿಂದ ಸ್ವಚ್ಛಗೊಳಿಸುವ ಕೆಲಸವನ್ನು ಸುಲಭಗೊಳಿಸುತ್ತದೆ.\n\nQuestion: ನಾನು ಹೇಗೆ ಆರ್ಡರ್ ಮಾಡಬಹುದು?\nAnswer: ನಮ್ಮ ವೆಬ್‌ಸೈಟ್ ಅಥವಾ ಅಧಿಕೃತ ಮಾರಾಟ ಪ್ರತಿನಿಧಿಗಳ ಮೂಲಕ ಆರ್ಡರ್ ಮಾಡಬಹುದು.\n\nQuestion: ರಿಫಂಡ್ ಪಾಲಿಸಿ ಏನು?\nAnswer: ರಿಫಂಡ್ ಅರ್ಹತೆ ಕಂಪನಿಯ ನಿಯಮಗಳು ಮತ್ತು ಷರತ್ತುಗಳ ಪ್ರಕಾರ ಪರಿಶೀಲಿಸಲಾಗುತ್ತದೆ.\n\nQuestion: ನನ್ನ ಆರ್ಡರ್ ಎಲ್ಲಿದೆ?\nAnswer: ದಯವಿಟ್ಟು ನಿಮ್ಮ ಆರ್ಡರ್ ಐಡಿ ಅಥವಾ ಮೊಬೈಲ್ ಸಂಖ್ಯೆಯನ್ನು ನೀಡಿ. ನಾವು ಆರ್ಡರ್ ಸ್ಥಿತಿಯನ್ನು ಪರಿಶೀಲಿಸುತ್ತೇವೆ.\n\nQuestion: SmartMop ಭಾರತದಲ್ಲಿ ತಯಾರಿಸಲ್ಪಟ್ಟಿದೆಯೇ?\nAnswer: ಹೌದು, SmartMop ಮೈಸೂರಿನಲ್ಲಿ ತಯಾರಿಸಲ್ಪಟ್ಟ ಉತ್ಪನ್ನವಾಗಿದೆ.\n",
+      "created_at": "2026-06-20T18:40:54.297Z"
+    }
+  ],
+  "calls": [
+    {
+      "id": "call-1",
+      "business_id": "demo-business-id",
+      "agent_id": "demo-agent-id",
+      "customer_id": "cust-1",
+      "customer_name": "ರವಿ ವರ್ಮಾ (Ravi Verma)",
+      "duration_seconds": 145,
+      "status": "completed",
+      "summary": "Inquired about price and battery. Satisfied and ready to buy Mop Pro.",
+      "sentiment": "positive",
+      "outcome": "Lead Qualified / Demo Booked",
+      "recording_url": "/recordings/call-1.wav",
+      "created_at": "2026-06-20T16:35:06.167Z"
+    },
+    {
+      "id": "call-2",
+      "business_id": "demo-business-id",
+      "agent_id": "demo-agent-id",
+      "customer_id": "cust-2",
+      "customer_name": "ಗೀತಾ ಹೆಗಡೆ (Geetha Hegde)",
+      "duration_seconds": 90,
+      "status": "escalated",
+      "summary": "Refund required for defective item. Escalated to billing supervisor.",
+      "sentiment": "frustrated",
+      "outcome": "Support Escalation",
+      "recording_url": "/recordings/call-2.wav",
+      "created_at": "2026-06-20T12:35:06.167Z"
+    },
+    {
+      "id": "call-gv4a0vcq0",
+      "business_id": "demo-business-id",
+      "agent_id": "agent-c1qiej3x5",
+      "customer_id": "cust-temp",
+      "customer_name": "Customer Phone (00:13)",
+      "duration_seconds": 0,
+      "status": "active",
+      "summary": "",
+      "sentiment": "neutral",
+      "outcome": "Call Active",
+      "recording_url": "",
+      "created_at": "2026-06-20T18:43:24.899Z"
+    },
+    {
+      "id": "call-zhboh3g88",
+      "business_id": "demo-business-id",
+      "agent_id": "agent-c1qiej3x5",
+      "customer_id": "cust-temp",
+      "customer_name": "Customer Phone (00:13)",
+      "duration_seconds": 105,
+      "status": "completed",
+      "summary": "General greetings.",
+      "sentiment": "neutral",
+      "outcome": "Information provided",
+      "recording_url": "",
+      "created_at": "2026-06-20T18:43:24.904Z"
+    }
+  ],
+  "customers": [
+    {
+      "id": "cust-1",
+      "business_id": "demo-business-id",
+      "name": "ರವಿ ವರ್ಮಾ (Ravi Verma)",
+      "phone": "+91 94480 98765",
+      "city": "Bengaluru",
+      "budget": 3000,
+      "requirements": "Wants a demo of SmartMop Pro at home",
+      "callback_time": "Evening 5 PM",
+      "lead_score": 85,
+      "is_lead": true,
+      "created_at": "2026-06-20T18:35:06.167Z"
+    },
+    {
+      "id": "cust-2",
+      "business_id": "demo-business-id",
+      "name": "ಗೀತಾ ಹೆಗಡೆ (Geetha Hegde)",
+      "phone": "+91 99800 11223",
+      "city": "Mysuru",
+      "budget": 0,
+      "requirements": "Refund inquiry on order SM-985",
+      "callback_time": "Immediate callback",
+      "lead_score": 30,
+      "is_lead": false,
+      "created_at": "2026-06-20T18:35:06.167Z"
+    }
+  ],
+  "orders": [
+    {
+      "id": "ord-1",
+      "business_id": "demo-business-id",
+      "customer_id": "cust-1",
+      "product_id": "prod-1",
+      "status": "shipped",
+      "tracking_number": "TRK-SM-987541",
+      "delivery_date": "2026-06-21",
+      "created_at": "2026-06-20T18:35:06.167Z"
+    }
+  ],
+  "refunds": [
+    {
+      "id": "ref-1",
+      "business_id": "demo-business-id",
+      "order_id": "ord-1",
+      "status": "pending",
+      "amount": 2999,
+      "reason": "Product not powering on upon delivery",
+      "created_at": "2026-06-20T18:35:06.167Z"
+    }
+  ],
+  "appointments": [
+    {
+      "id": "app-1",
+      "business_id": "demo-business-id",
+      "customer_id": "cust-1",
+      "agent_id": "demo-agent-id",
+      "date": "2026-06-22",
+      "time": "15:30",
+      "status": "confirmed",
+      "notes": "Ravi Verma requested a live product demonstration at their home location.",
+      "created_at": "2026-06-20T18:35:06.167Z"
+    }
+  ],
+  "support_tickets": [
+    {
+      "id": "tkt-1",
+      "business_id": "demo-business-id",
+      "customer_id": "cust-2",
+      "subject": "Charger port not working",
+      "issue_description": "Charging station pins are damaged. The mop does not connect properly.",
+      "status": "escalated",
+      "priority": "high",
+      "created_at": "2026-06-20T18:35:06.167Z"
+    }
+  ],
+  "subscriptions": [
+    {
+      "id": "sub-1",
+      "business_id": "demo-business-id",
+      "plan": "pro",
+      "status": "active",
+      "billing_cycle_start": "2026-06-20T18:35:06.167Z",
+      "billing_cycle_end": "2026-07-20T18:35:06.167Z",
+      "created_at": "2026-06-20T18:35:06.167Z"
+    },
+    {
+      "id": "sub-a6h6gejcw",
+      "business_id": "bus-3uv477vro",
+      "plan": "starter",
+      "status": "active",
+      "billing_cycle_start": "2026-06-20T18:35:08.937Z",
+      "billing_cycle_end": "2026-07-20T18:35:08.937Z",
+      "created_at": "2026-06-20T18:35:08.934Z"
+    }
+  ],
+  "payments": [
+    {
+      "id": "pay-1",
+      "business_id": "demo-business-id",
+      "subscription_id": "sub-1",
+      "amount": 14999,
+      "status": "success",
+      "razorpay_payment_id": "pay_mock_razorpay_12345",
+      "created_at": "2026-06-20T18:35:06.167Z"
+    },
+    {
+      "id": "pay-9nyv1xql4",
+      "business_id": "bus-3uv477vro",
+      "subscription_id": "sub-a6h6gejcw",
+      "amount": 0,
+      "status": "success",
+      "razorpay_payment_id": "trial_bypass",
+      "created_at": "2026-06-20T18:35:08.934Z"
+    },
+    {
+      "id": "pay-ipkbvjr2y",
+      "business_id": "bus-3uv477vro",
+      "subscription_id": "sub-a6h6gejcw",
+      "amount": 0,
+      "status": "success",
+      "razorpay_payment_id": "trial_bypass",
+      "created_at": "2026-06-20T18:35:08.938Z"
+    }
+  ],
+  "analytics": [
+    {
+      "id": "an-1",
+      "business_id": "demo-business-id",
+      "date": "2026-06-20",
+      "total_calls": 15,
+      "leads_count": 8,
+      "appointments_count": 3,
+      "escalations_count": 2,
+      "satisfaction_score": 4.6,
+      "revenue": 14999,
+      "created_at": "2026-06-20T18:35:06.167Z"
+    }
+  ]
+}
