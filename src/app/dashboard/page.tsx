@@ -7,7 +7,8 @@ import {
   Trash2, Play, LogOut, Settings, Database, BookOpen, 
   Users, HelpCircle, X, ArrowRight, ShieldCheck, Ticket, 
   ShoppingBag, Wrench, BarChart2, ShieldAlert, Award, CreditCard,
-  PhoneCall, PhoneIncoming, PhoneOutgoing, PhoneMissed, Mic, MicOff
+  PhoneCall, PhoneIncoming, PhoneOutgoing, PhoneMissed, Mic, MicOff,
+  Menu
 } from "lucide-react";
 import { dbClient } from "@/lib/dbClient";
 import { 
@@ -19,6 +20,7 @@ import {
 export default function DashboardPage() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<"overview" | "crm" | "products" | "services" | "kb" | "agents" | "billing" | "admin" | "settings">("overview");
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const handleLogout = () => {
     if (typeof window !== "undefined") {
@@ -687,10 +689,20 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="flex min-h-screen w-screen bg-slate-950 text-slate-100 font-sans" id="dashboard-root">
+    <div className="flex min-h-screen w-screen bg-slate-950 text-slate-100 font-sans relative overflow-x-hidden" id="dashboard-root">
       
+      {/* Sidebar Overlay Backdrop on Mobile */}
+      {isSidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black/60 z-30 md:hidden"
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
+
       {/* Sidebar Panel */}
-      <aside className="w-64 bg-slate-900 border-r border-slate-800/80 flex flex-col p-6 shrink-0">
+      <aside className={`fixed md:static inset-y-0 left-0 z-40 w-64 bg-slate-900 border-r border-slate-800/80 flex flex-col p-6 transition-transform duration-300 shrink-0 ${
+        isSidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
+      }`}>
         <div className="flex items-center gap-3 pb-6 border-b border-slate-800 mb-6">
           <div className="bg-gradient-to-br from-violet-600 to-indigo-600 p-2 rounded-lg shadow-lg">
             <Sparkles className="h-5 w-5 text-white" />
@@ -707,7 +719,7 @@ export default function DashboardPage() {
             className={`flex items-center gap-3 px-4 py-2.5 text-sm font-semibold rounded-lg cursor-pointer transition-all ${
               activeTab === "overview" ? "bg-violet-600/15 border border-violet-500/25 text-violet-400" : "text-slate-400 hover:text-slate-200 border border-transparent"
             }`}
-            onClick={() => setActiveTab("overview")}
+            onClick={() => { setActiveTab("overview"); setIsSidebarOpen(false); }}
           >
             <BarChart2 className="h-4 w-4" />
             Overview Panel
@@ -718,7 +730,7 @@ export default function DashboardPage() {
             className={`flex items-center gap-3 px-4 py-2.5 text-sm font-semibold rounded-lg cursor-pointer transition-all ${
               activeTab === "crm" ? "bg-violet-600/15 border border-violet-500/25 text-violet-400" : "text-slate-400 hover:text-slate-200 border border-transparent"
             }`}
-            onClick={() => setActiveTab("crm")}
+            onClick={() => { setActiveTab("crm"); setIsSidebarOpen(false); }}
           >
             <Users className="h-4 w-4" />
             CRM & qualified Leads
@@ -729,7 +741,7 @@ export default function DashboardPage() {
             className={`flex items-center gap-3 px-4 py-2.5 text-sm font-semibold rounded-lg cursor-pointer transition-all ${
               activeTab === "products" ? "bg-violet-600/15 border border-violet-500/25 text-violet-400" : "text-slate-400 hover:text-slate-200 border border-transparent"
             }`}
-            onClick={() => setActiveTab("products")}
+            onClick={() => { setActiveTab("products"); setIsSidebarOpen(false); }}
           >
             <ShoppingBag className="h-4 w-4" />
             Product Specs
@@ -740,7 +752,7 @@ export default function DashboardPage() {
             className={`flex items-center gap-3 px-4 py-2.5 text-sm font-semibold rounded-lg cursor-pointer transition-all ${
               activeTab === "services" ? "bg-violet-600/15 border border-violet-500/25 text-violet-400" : "text-slate-400 hover:text-slate-200 border border-transparent"
             }`}
-            onClick={() => setActiveTab("services")}
+            onClick={() => { setActiveTab("services"); setIsSidebarOpen(false); }}
           >
             <Wrench className="h-4 w-4" />
             Services catalog
@@ -751,7 +763,7 @@ export default function DashboardPage() {
             className={`flex items-center gap-3 px-4 py-2.5 text-sm font-semibold rounded-lg cursor-pointer transition-all ${
               activeTab === "kb" ? "bg-violet-600/15 border border-violet-500/25 text-violet-400" : "text-slate-400 hover:text-slate-200 border border-transparent"
             }`}
-            onClick={() => setActiveTab("kb")}
+            onClick={() => { setActiveTab("kb"); setIsSidebarOpen(false); }}
           >
             <BookOpen className="h-4 w-4" />
             RAG Knowledge Base
@@ -762,7 +774,7 @@ export default function DashboardPage() {
             className={`flex items-center gap-3 px-4 py-2.5 text-sm font-semibold rounded-lg cursor-pointer transition-all ${
               activeTab === "agents" ? "bg-violet-600/15 border border-violet-500/25 text-violet-400" : "text-slate-400 hover:text-slate-200 border border-transparent"
             }`}
-            onClick={() => setActiveTab("agents")}
+            onClick={() => { setActiveTab("agents"); setIsSidebarOpen(false); }}
           >
             <Play className="h-4 w-4" />
             Voice Agent Config
@@ -773,7 +785,7 @@ export default function DashboardPage() {
             className={`flex items-center gap-3 px-4 py-2.5 text-sm font-semibold rounded-lg cursor-pointer transition-all ${
               activeTab === "billing" ? "bg-violet-600/15 border border-violet-500/25 text-violet-400" : "text-slate-400 hover:text-slate-200 border border-transparent"
             }`}
-            onClick={() => setActiveTab("billing")}
+            onClick={() => { setActiveTab("billing"); setIsSidebarOpen(false); }}
           >
             <CreditCard className="h-4 w-4" />
             Plans & Razorpay
@@ -785,7 +797,7 @@ export default function DashboardPage() {
               className={`flex items-center gap-3 px-4 py-2.5 text-sm font-semibold rounded-lg cursor-pointer transition-all border border-emerald-500/10 ${
                 activeTab === "admin" ? "bg-emerald-500/10 border-emerald-500/35 text-emerald-400" : "text-emerald-500 hover:text-emerald-400 hover:bg-emerald-500/5"
               }`}
-              onClick={() => setActiveTab("admin")}
+              onClick={() => { setActiveTab("admin"); setIsSidebarOpen(false); }}
             >
               <ShieldAlert className="h-4 w-4" />
               Super Admin panel
@@ -799,7 +811,7 @@ export default function DashboardPage() {
             className={`w-full flex items-center gap-3 px-4 py-2 text-sm rounded-lg cursor-pointer font-semibold transition-all mb-2 ${
               activeTab === "settings" ? "bg-violet-600/15 border border-violet-500/25 text-violet-400 font-bold" : "text-slate-400 hover:text-slate-200"
             }`}
-            onClick={() => setActiveTab("settings")}
+            onClick={() => { setActiveTab("settings"); setIsSidebarOpen(false); }}
           >
             <Settings className="h-4.5 w-4.5" />
             Telephony settings
@@ -817,7 +829,24 @@ export default function DashboardPage() {
       </aside>
 
       {/* Main Panel View */}
-      <main className="flex-grow p-10 overflow-y-auto max-w-7xl mx-auto w-full">
+      <main className="flex-grow p-4 md:p-10 overflow-y-auto max-w-7xl mx-auto w-full">
+        
+        {/* Mobile Header Bar */}
+        <div className="flex md:hidden items-center justify-between p-3.5 border border-slate-800 bg-slate-900/60 backdrop-blur-md rounded-2xl mb-6 sticky top-0 z-20">
+          <div className="flex items-center gap-2">
+            <div className="bg-gradient-to-br from-violet-600 to-indigo-600 p-1.5 rounded-lg">
+              <Sparkles className="h-4 w-4 text-white" />
+            </div>
+            <span className="text-sm font-bold text-white font-display">KannadaAI OS</span>
+          </div>
+          <button 
+            type="button"
+            onClick={() => setIsSidebarOpen(true)}
+            className="p-2 bg-slate-850 hover:bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-800/80 rounded-xl cursor-pointer"
+          >
+            <Menu className="h-4 w-4" />
+          </button>
+        </div>
         
         {/* Header bar */}
         <header className="flex justify-between items-center mb-8 pb-4 border-b border-slate-900">
