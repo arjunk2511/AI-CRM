@@ -66,6 +66,7 @@ export async function GET(request: NextRequest) {
 
     if (!elResponse.ok) {
       const errText = await elResponse.text();
+      console.error("[ElevenLabs API Failure] Component: ElevenLabs Text-to-Speech API - HTTP status:", elResponse.status, "Error details:", errText);
       throw new Error(`ElevenLabs failure: ${errText}`);
     }
 
@@ -79,7 +80,7 @@ export async function GET(request: NextRequest) {
     });
 
   } catch (error: any) {
-    console.error("ElevenLabs API failure, falling back to Google TTS:", error);
+    console.error("[ElevenLabs API Failure] Component: ElevenLabs Text-to-Speech API - Exception details:", error.message || error);
     // Graceful degradation: Fall back to Google Translate TTS if ElevenLabs fails
     const fallbackUrl = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(text)}&tl=${langCode}&client=tw-ob`;
     return NextResponse.redirect(fallbackUrl);

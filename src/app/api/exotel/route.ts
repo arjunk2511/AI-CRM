@@ -147,16 +147,26 @@ async function handleTelephonyRequest(request: NextRequest) {
     // 2. Fetch Agent details
     let agent = null;
     if (agentId) {
-      agent = await dbService.getAgent(agentId);
+      try {
+        agent = await dbService.getAgent(agentId);
+      } catch (err: any) {
+        console.error("[Exotel Webhook Failure] Component: Supabase Database (getAgent) - Error details:", err);
+        throw new Error(`Supabase Database (getAgent) error: ${err.message || err}`);
+      }
     }
     
     // If no agentId or agent not found, resolve a default agent
     if (!agent) {
-      // Find default business
-      const businesses = await dbService.getAdminBusinessesList();
-      const defaultBizId = businesses.length > 0 ? businesses[0].id : "demo-business-id";
-      const agents = await dbService.getAgents(defaultBizId);
-      agent = agents.length > 0 ? agents[0] : null;
+      try {
+        // Find default business
+        const businesses = await dbService.getAdminBusinessesList();
+        const defaultBizId = businesses.length > 0 ? businesses[0].id : "demo-business-id";
+        const agents = await dbService.getAgents(defaultBizId);
+        agent = agents.length > 0 ? agents[0] : null;
+      } catch (err: any) {
+        console.error("[Exotel Webhook Failure] Component: Supabase Database (Resolve Default Agent) - Error details:", err);
+        throw new Error(`Supabase Database (Resolve Default Agent) error: ${err.message || err}`);
+      }
     }
 
     if (!agent) {
@@ -167,24 +177,40 @@ async function handleTelephonyRequest(request: NextRequest) {
     // 3. START OF CALL (Greeting phase)
     if (!speechResult && !conversationId) {
       // Initialize new conversation session
-      const newCall = await dbService.createConversation(
-        agent.business_id,
-        agent.id,
-        `Customer (${fromPhone})`
-      );
+      let newCall;
+      try {
+        newCall = await dbService.createConversation(
+          agent.business_id,
+          agent.id,
+          `Customer (${fromPhone})`
+        );
+      } catch (err: any) {
+        console.error("[Exotel Webhook Failure] Component: Supabase Database (createConversation) - Error details:", err);
+        throw new Error(`Supabase Database (createConversation) error: ${err.message || err}`);
+      }
       
       // Update Call sid
-      await dbService.updateConversation(newCall.id, {
-        recording_url: `exotel:${callSid}`,
-        status: "active"
-      });
+      try {
+        await dbService.updateConversation(newCall.id, {
+          recording_url: `exotel:${callSid}`,
+          status: "active"
+        });
+      } catch (err: any) {
+        console.error("[Exotel Webhook Failure] Component: Supabase Database (updateConversation) - Error details:", err);
+        throw new Error(`Supabase Database (updateConversation) error: ${err.message || err}`);
+      }
 
       const greetingText = agent.greeting_message || (agent.language === "Kannada"
         ? "ನಮಸ್ಕಾರ! ನಾನು ನಿಮಗೆ ಹೇಗೆ ಸಹಾಯ ಮಾಡಲಿ?"
         : "Hello! How can I assist you today?");
 
-      // Log greeting in Supabase
-      await dbService.createMessage(newCall.id, "assistant", greetingText);
+      // Log greeting in database
+      try {
+        await dbService.createMessage(newCall.id, "assistant", greetingText);
+      } catch (err: any) {
+        console.error("[Exotel Webhook Failure] Component: Supabase Database (createMessage - Greeting) - Error details:", err);
+        throw new Error(`Supabase Database (createMessage - Greeting) error: ${err.message || err}`);
+      }
 
       // XML Redirecting to ElevenLabs streaming audio & Gather input
       const playUrl = escapeXmlValue(`${webhookHost}/api/voice/play?text=${encodeURIComponent(greetingText)}&agentId=${agent.id}`);
@@ -203,28 +229,61 @@ async function handleTelephonyRequest(request: NextRequest) {
     // 4. ACTIVE CALL DIALOGUE LOOP (Speech response phase)
     if (speechResult && conversationId) {
       // Log customer message
-      await dbService.createMessage(conversationId, "user", speechResult);
-
-      // Call central GPT-4o RAG AI responder API
-      const chatResponse = await fetch(`${webhookHost}/api/chat`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          message: speechResult,
-          agentId,
-          conversationId
-        })
-      });
-
-      if (!chatResponse.ok) {
-        throw new Error("Local chat responder query failed");
+      try {
+        await dbService.createMessage(conversationId, "user", speechResult);
+      } catch (err: any) {
+        console.error("[Exotel Webhook Failure] Component: Supabase Database (createMessage - User Speech) - Error details:", err);
+        throw new Error(`Supabase Database (createMessage - User Speech) error: ${err.message || err}`);
       }
 
-      const chatData = await chatResponse.json();
+      // Call central GPT-4o RAG AI responder API
+      let chatResponse;
+      try {
+        chatResponse = await fetch(`${webhookHost}/api/chat`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            message: speechResult,
+            agentId,
+            conversationId
+          })
+        });
+      } catch (err: any) {
+        console.error("[Exotel Webhook Failure] Component: OpenAI / Gemini Chat API - Connection fetch failure - Error details:", err);
+        throw new Error(`OpenAI / Gemini Chat API connection failure: ${err.message || err}`);
+      }
+
+      if (!chatResponse.ok) {
+        let errDetails = "";
+        try {
+          const errJson = await chatResponse.json();
+          errDetails = errJson.error || JSON.stringify(errJson);
+        } catch (e) {
+          try {
+            errDetails = await chatResponse.text();
+          } catch (e2) {}
+        }
+        console.error("[Exotel Webhook Failure] Component: OpenAI / Gemini Chat API - HTTP Status:", chatResponse.status, "Details:", errDetails);
+        throw new Error(`OpenAI / Gemini Chat API HTTP ${chatResponse.status} error: ${errDetails}`);
+      }
+
+      let chatData;
+      try {
+        chatData = await chatResponse.json();
+      } catch (err: any) {
+        console.error("[Exotel Webhook Failure] Component: OpenAI / Gemini Chat API - Invalid response format - Error details:", err);
+        throw new Error(`OpenAI / Gemini Chat API invalid response JSON: ${err.message || err}`);
+      }
+
       const replyText = chatData.reply;
 
       // Log assistant response
-      await dbService.createMessage(conversationId, "assistant", replyText);
+      try {
+        await dbService.createMessage(conversationId, "assistant", replyText);
+      } catch (err: any) {
+        console.error("[Exotel Webhook Failure] Component: Supabase Database (createMessage - Assistant Reply) - Error details:", err);
+        throw new Error(`Supabase Database (createMessage - Assistant Reply) error: ${err.message || err}`);
+      }
 
       const playUrl = escapeXmlValue(`${webhookHost}/api/voice/play?text=${encodeURIComponent(replyText)}&agentId=${agent.id}`);
       const gatherAction = escapeXmlValue(`${webhookHost}/api/exotel?conversationId=${conversationId}&agentId=${agent.id}`);
@@ -233,7 +292,12 @@ async function handleTelephonyRequest(request: NextRequest) {
 
       if (chatData.escalated) {
         // Transfer to human support representative
-        const businessDetails = await dbService.getBusiness(agent.business_id);
+        let businessDetails = null;
+        try {
+          businessDetails = await dbService.getBusiness(agent.business_id);
+        } catch (err: any) {
+          console.error("[Exotel Webhook Warning] Component: Supabase Database (getBusiness) - Error details:", err);
+        }
         const humanForwardPhone = escapeXmlValue(businessDetails?.phone || "+91 98860 12345");
         
         xml = `<?xml version="1.0" encoding="UTF-8"?>
@@ -259,7 +323,7 @@ async function handleTelephonyRequest(request: NextRequest) {
     return buildNextResponse(emptyXml);
 
   } catch (error: any) {
-    console.error("Exotel webhook callback error:", error);
+    console.error("[Exotel Webhook Failure] Outermost Exception Handler. Failing Component:", error.message || error);
     
     // Return graceful audio error playing message in XML
     const errorText = "ಕ್ಷಮಿಸಿ, ಸಂಪರ್ಕದಲ್ಲಿ ತೊಂದರೆಯಾಗಿದೆ. ದಯವಿಟ್ಟು ನಂತರ ಪ್ರಯತ್ನಿಸಿ.";
