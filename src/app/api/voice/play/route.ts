@@ -1,0 +1,87 @@
+import { NextRequest, NextResponse } from "next/server";
+import { dbService } from "@/lib/db";
+
+export async function GET(request: NextRequest) {
+  const { searchParams } = new URL(request.url);
+  const text = searchParams.get("text") || "";
+  const agentId = searchParams.get("agentId") || "";
+
+  if (!text) {
+    return new NextResponse("Missing text parameter", { status: 400 });
+  }
+
+  // 1. Resolve Voice Config
+  let voiceId = "21m00Tcm4TlvDq8ikWAM"; // default ElevenLabs Rachel
+  let language = "Kannada";
+
+  if (agentId) {
+    try {
+      const agent = await dbService.getAgent(agentId);
+      if (agent) {
+        voiceId = agent.voice_id || voiceId;
+        language = agent.language || language;
+      }
+    } catch (err) {
+      console.warn("Could not load agent details for voice config:", err);
+    }
+  }
+
+  const langCodeMap: Record<string, string> = {
+    "Kannada": "kn",
+    "Telugu": "te",
+    "Hindi": "hi",
+    "Tamil": "ta",
+    "Malayalam": "ml",
+    "English": "en"
+  };
+  const langCode = langCodeMap[language] || "kn";
+
+  const apiKey = process.env.ELEVENLABS_API_KEY || "";
+
+  // 2. Fallback to Google Translate TTS if no ElevenLabs key is configured
+  if (!apiKey) {
+    const fallbackUrl = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(text)}&tl=${langCode}&client=tw-ob`;
+    return NextResponse.redirect(fallbackUrl);
+  }
+
+  // 3. Connect to ElevenLabs TTS
+  try {
+    const elUrl = `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`;
+    const elResponse = await fetch(elUrl, {
+      method: "POST",
+      headers: {
+        "xi-api-key": apiKey,
+        "Content-Type": "application/json",
+        "accept": "audio/mpeg"
+      },
+      body: JSON.stringify({
+        text,
+        model_id: "eleven_multilingual_v2",
+        voice_settings: {
+          stability: 0.5,
+          similarity_boost: 0.75
+        }
+      })
+    });
+
+    if (!elResponse.ok) {
+      const errText = await elResponse.text();
+      throw new Error(`ElevenLabs failure: ${errText}`);
+    }
+
+    const audioBuffer = await elResponse.arrayBuffer();
+
+    return new NextResponse(audioBuffer, {
+      headers: {
+        "Content-Type": "audio/mpeg",
+        "Cache-Control": "public, max-age=3600"
+      }
+    });
+
+  } catch (error: any) {
+    console.error("ElevenLabs API failure, falling back to Google TTS:", error);
+    // Graceful degradation: Fall back to Google Translate TTS if ElevenLabs fails
+    const fallbackUrl = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(text)}&tl=${langCode}&client=tw-ob`;
+    return NextResponse.redirect(fallbackUrl);
+  }
+}

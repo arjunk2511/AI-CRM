@@ -122,6 +122,15 @@ export default function DashboardPage() {
     const sess = JSON.parse(sessionStr);
     setSession(sess);
     
+    // Resolve active tab from URL search parameters if present
+    if (typeof window !== "undefined") {
+      const searchParams = new URLSearchParams(window.location.search);
+      const tabParam = searchParams.get("tab");
+      if (tabParam && ["overview", "crm", "products", "services", "kb", "agents", "billing", "admin", "settings"].includes(tabParam)) {
+        setActiveTab(tabParam as any);
+      }
+    }
+    
     // Load Telephony Credentials if any saved
     const telCreds = localStorage.getItem("swara_telephony");
     if (telCreds) {
@@ -808,10 +817,8 @@ export default function DashboardPage() {
         <div className="pt-4 border-t border-slate-800/80 mt-auto">
           <button
             id="nav-settings"
-            className={`w-full flex items-center gap-3 px-4 py-2 text-sm rounded-lg cursor-pointer font-semibold transition-all mb-2 ${
-              activeTab === "settings" ? "bg-violet-600/15 border border-violet-500/25 text-violet-400 font-bold" : "text-slate-400 hover:text-slate-200"
-            }`}
-            onClick={() => { setActiveTab("settings"); setIsSidebarOpen(false); }}
+            className="w-full flex items-center gap-3 px-4 py-2 text-sm rounded-lg cursor-pointer font-semibold transition-all mb-2 text-slate-400 hover:text-slate-200"
+            onClick={() => { router.push("/dashboard/telephony"); setIsSidebarOpen(false); }}
           >
             <Settings className="h-4.5 w-4.5" />
             Telephony settings
