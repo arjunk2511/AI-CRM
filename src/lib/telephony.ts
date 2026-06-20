@@ -122,47 +122,48 @@ export const telephonyService = {
   },
 
   // --- XML Generator for TwiML Call flow response ---
-  generateTwiMLSpeech(text: string, language: string, webhookUrl: string): string {
-    const langVoiceMap: Record<string, { lang: string; voice: string }> = {
-      "Kannada": { lang: "kn-IN", voice: "Google.kn-IN-Standard-A" },
-      "Telugu": { lang: "te-IN", voice: "Google.te-IN-Standard-A" },
-      "Hindi": { lang: "hi-IN", voice: "Google.hi-IN-Standard-A" },
-      "Tamil": { lang: "ta-IN", voice: "Google.ta-IN-Standard-A" },
-      "Malayalam": { lang: "ml-IN", voice: "Google.ml-IN-Standard-A" },
-      "English": { lang: "en-US", voice: "Polly.Joanna" }
-    };
-
-    const target = langVoiceMap[language] || langVoiceMap["Kannada"];
-    const escapedText = escapeXmlValue(text);
+  generateTwiMLSpeech(text: string, language: string, webhookUrl: string, agentId: string = "demo-agent-id", webhookHost: string = ""): string {
     const escapedWebhook = escapeXmlValue(webhookUrl);
+    if (webhookHost) {
+      const playUrl = escapeXmlValue(`${webhookHost}/api/voice/play?text=${encodeURIComponent(text)}&agentId=${agentId}`);
+      const promptPlayUrl = escapeXmlValue(`${webhookHost}/api/voice/play?text=${encodeURIComponent(language === "Kannada" ? "ದಯವಿಟ್ಟು ಉತ್ತರಿಸಿ." : "Please respond.")}&agentId=${agentId}`);
+      return `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+    <Play>${playUrl}</Play>
+    <Gather input="speech" action="${escapedWebhook}" timeout="4" speechTimeout="auto">
+        <Play>${promptPlayUrl}</Play>
+    </Gather>
+</Response>`;
+    }
 
+    // Google TTS fallback is disabled. We output relative ElevenLabs play URL if host is not present.
+    const relativePlayUrl = escapeXmlValue(`/api/voice/play?text=${encodeURIComponent(text)}&agentId=${agentId}`);
+    const relativePromptUrl = escapeXmlValue(`/api/voice/play?text=${encodeURIComponent(language === "Kannada" ? "ದಯವಿಟ್ಟು ಉತ್ತರಿಸಿ." : "Please respond.")}&agentId=${agentId}`);
     return `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-    <Say language="${target.lang}" voice="${target.voice}">${escapedText}</Say>
-    <Gather input="speech" action="${escapedWebhook}" language="${target.lang}" timeout="4" speechTimeout="auto">
-        <Say language="${target.lang}" voice="${target.voice}">ದಯವಿಟ್ಟು ಉತ್ತರಿಸಿ.</Say>
+    <Play>${relativePlayUrl}</Play>
+    <Gather input="speech" action="${escapedWebhook}" timeout="4" speechTimeout="auto">
+        <Play>${relativePromptUrl}</Play>
     </Gather>
 </Response>`;
   },
 
   // --- XML Generator for Call Escalation / Human Transfer ---
-  generateTwiMLEscalation(text: string, language: string, humanPhone: string): string {
-    const langVoiceMap: Record<string, { lang: string; voice: string }> = {
-      "Kannada": { lang: "kn-IN", voice: "Google.kn-IN-Standard-A" },
-      "Telugu": { lang: "te-IN", voice: "Google.te-IN-Standard-A" },
-      "Hindi": { lang: "hi-IN", voice: "Google.hi-IN-Standard-A" },
-      "Tamil": { lang: "ta-IN", voice: "Google.ta-IN-Standard-A" },
-      "Malayalam": { lang: "ml-IN", voice: "Google.ml-IN-Standard-A" },
-      "English": { lang: "en-US", voice: "Polly.Joanna" }
-    };
-
-    const target = langVoiceMap[language] || langVoiceMap["Kannada"];
-    const escapedText = escapeXmlValue(text);
+  generateTwiMLEscalation(text: string, language: string, humanPhone: string, agentId: string = "demo-agent-id", webhookHost: string = ""): string {
     const escapedPhone = escapeXmlValue(humanPhone);
+    if (webhookHost) {
+      const playUrl = escapeXmlValue(`${webhookHost}/api/voice/play?text=${encodeURIComponent(text)}&agentId=${agentId}`);
+      return `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+    <Play>${playUrl}</Play>
+    <Dial>${escapedPhone}</Dial>
+</Response>`;
+    }
 
+    const relativePlayUrl = escapeXmlValue(`/api/voice/play?text=${encodeURIComponent(text)}&agentId=${agentId}`);
     return `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-    <Say language="${target.lang}" voice="${target.voice}">${escapedText}</Say>
+    <Play>${relativePlayUrl}</Play>
     <Dial>${escapedPhone}</Dial>
 </Response>`;
   }

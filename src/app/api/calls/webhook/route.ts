@@ -76,11 +76,15 @@ function buildNextResponse(xmlContent: string): NextResponse {
 
 // Telephony Provider Webhook (processes URL-encoded POST requests from Twilio / Exotel)
 export async function POST(request: NextRequest) {
-  try {
-    const url = new URL(request.url);
-    const conversationId = url.searchParams.get("conversationId") || "";
-    const agentId = url.searchParams.get("agentId") || "";
+  const url = new URL(request.url);
+  const conversationId = url.searchParams.get("conversationId") || "";
+  let agentId = url.searchParams.get("agentId") || "";
 
+  const chatHost = request.headers.get("host") || "localhost:3000";
+  const protocol = request.headers.get("x-forwarded-proto") || "http";
+  const webhookHost = `${protocol}://${chatHost}`;
+
+  try {
     if (!conversationId || !agentId) {
       return new NextResponse("Missing conversationId or agentId parameters", { status: 400 });
     }
@@ -109,10 +113,7 @@ export async function POST(request: NextRequest) {
       await dbService.createMessage(conversationId, "user", userSpeech);
 
       // Trigger chat API processor locally to retrieve RAG matching & auto CRM qualification
-      const chatHost = request.headers.get("host") || "localhost:3000";
-      const protocol = request.headers.get("x-forwarded-proto") || "http";
-      
-      const chatResponse = await fetch(`${protocol}://${chatHost}/api/chat`, {
+      const chatResponse = await fetch(`${webhookHost}/api/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -141,11 +142,11 @@ export async function POST(request: NextRequest) {
         outcome: chatData.outcome || "Call active"
       });
 
-      // Generate TwiML based on escalation status
+      // Generate TwiML based on escalation status using ElevenLabs Play tags
       if (chatData.escalated) {
-        replyXml = telephonyService.generateTwiMLEscalation(replyText, agent.language, humanTransferPhone);
+        replyXml = telephonyService.generateTwiMLEscalation(replyText, agent.language, humanTransferPhone, agent.id, webhookHost);
       } else {
-        replyXml = telephonyService.generateTwiMLSpeech(replyText, agent.language, webhookUrl);
+        replyXml = telephonyService.generateTwiMLSpeech(replyText, agent.language, webhookUrl, agent.id, webhookHost);
       }
     } 
     // 3. Scenario B: Newly Initiated Call (No user speech yet - Play Greeting)
@@ -161,7 +162,7 @@ export async function POST(request: NextRequest) {
         outcome: "Connected / Call Active"
       });
 
-      replyXml = telephonyService.generateTwiMLSpeech(greeting, agent.language, webhookUrl);
+      replyXml = telephonyService.generateTwiMLSpeech(greeting, agent.language, webhookUrl, agent.id, webhookHost);
     }
 
     // Return TwiML XML payload response to Telephony Carrier
@@ -170,10 +171,12 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     console.error("Telephony Webhook processing error:", error);
     
-    // Fallback safe XML directive
+    // Fallback safe XML playing ElevenLabs audio
+    const errorText = "ಕ್ಷಮಿಸಿ, ಸಂಪರ್ಕದಲ್ಲಿ ದೋಷವಾಗಿದೆ. ದಯವಿಟ್ಟು ಮತ್ತೊಮ್ಮೆ ಪ್ರಯತ್ನಿಸಿ.";
+    const errPlayUrl = escapeXmlValue(`${webhookHost}/api/voice/play?text=${encodeURIComponent(errorText)}&agentId=${agentId || "demo-agent-id"}`);
     const fallbackXml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-    <Say language="kn-IN" voice="Google.kn-IN-Standard-A">ಕ್ಷಮಿಸಿ, ಸಂಪರ್ಕದಲ್ಲಿ ದೋಷವಾಗಿದೆ. ದಯವಿಟ್ಟು ಮತ್ತೊಮ್ಮೆ ಪ್ರಯತ್ನಿಸಿ.</Say>
+    <Play>${errPlayUrl}</Play>
     <Hangup/>
 </Response>`;
     

@@ -38,10 +38,10 @@ export async function GET(request: NextRequest) {
 
   const apiKey = process.env.ELEVENLABS_API_KEY || "";
 
-  // 2. Fallback to Google Translate TTS if no ElevenLabs key is configured
+  // Enforce ElevenLabs TTS: Throw error if API key is missing
   if (!apiKey) {
-    const fallbackUrl = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(text)}&tl=${langCode}&client=tw-ob`;
-    return NextResponse.redirect(fallbackUrl);
+    console.error("[ElevenLabs API Failure] Component: ElevenLabs Text-to-Speech API - Missing ELEVENLABS_API_KEY environment variable. Fallback to Google TTS is disabled.");
+    return new NextResponse("Error: ElevenLabs API Key is missing. Production speech synthesis is required.", { status: 500 });
   }
 
   // 3. Connect to ElevenLabs TTS
@@ -81,8 +81,6 @@ export async function GET(request: NextRequest) {
 
   } catch (error: any) {
     console.error("[ElevenLabs API Failure] Component: ElevenLabs Text-to-Speech API - Exception details:", error.message || error);
-    // Graceful degradation: Fall back to Google Translate TTS if ElevenLabs fails
-    const fallbackUrl = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(text)}&tl=${langCode}&client=tw-ob`;
-    return NextResponse.redirect(fallbackUrl);
+    return new NextResponse(`Error: ElevenLabs speech generation failed: ${error.message || error}`, { status: 500 });
   }
 }

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { dbService, supabase } from "@/lib/db";
+import { supabase } from "@/lib/db";
 import OpenAI from "openai";
 
 export async function GET(request: NextRequest) {
@@ -9,45 +9,49 @@ export async function GET(request: NextRequest) {
     supabase: "connected"
   };
 
-  // 1. Test Supabase connection
-  if (dbService.isMock()) {
-    results.supabase = "sandbox_mode (running with local json database)";
+  // 1. Verify and test Supabase Connection
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
+
+  if (!supabaseUrl) {
+    results.supabase = "failed: missing NEXT_PUBLIC_SUPABASE_URL";
+  } else if (!supabaseAnonKey) {
+    results.supabase = "failed: missing NEXT_PUBLIC_SUPABASE_ANON_KEY";
+  } else if (!supabaseServiceKey) {
+    results.supabase = "failed: missing SUPABASE_SERVICE_ROLE_KEY";
   } else {
     try {
       if (!supabase) {
-        throw new Error("Supabase client is null despite being configured");
+        throw new Error("Supabase client not initialized");
       }
-      const { data, error } = await supabase.from("businesses").select("id").limit(1);
-      if (error) {
-        throw error;
-      }
+      // Simple select query to test database connectivity
+      const { error } = await supabase.from("businesses").select("id").limit(1);
+      if (error) throw error;
       results.supabase = "connected";
     } catch (err: any) {
-      console.error("Debug: Supabase connection failed:", err);
       results.supabase = `failed: ${err.message || err}`;
     }
   }
 
-  // 2. Test OpenAI connection
+  // 2. Verify and test OpenAI connection
   const openaiKey = process.env.OPENAI_API_KEY || "";
   if (!openaiKey) {
-    results.openai = "missing_api_key (running with local rule-based fallback)";
+    results.openai = "failed: missing OPENAI_API_KEY";
   } else {
     try {
       const openai = new OpenAI({ apiKey: openaiKey });
-      // Call a quick lightweight model listing
       await openai.models.list();
       results.openai = "connected";
     } catch (err: any) {
-      console.error("Debug: OpenAI connection failed:", err);
       results.openai = `failed: ${err.message || err}`;
     }
   }
 
-  // 3. Test ElevenLabs connection
+  // 3. Verify and test ElevenLabs connection
   const elevenlabsKey = process.env.ELEVENLABS_API_KEY || "";
   if (!elevenlabsKey) {
-    results.elevenlabs = "missing_api_key (running with Google TTS redirect fallback)";
+    results.elevenlabs = "failed: missing ELEVENLABS_API_KEY";
   } else {
     try {
       const elResponse = await fetch("https://api.elevenlabs.io/v1/voices", {
@@ -59,7 +63,6 @@ export async function GET(request: NextRequest) {
       }
       results.elevenlabs = "connected";
     } catch (err: any) {
-      console.error("Debug: ElevenLabs connection failed:", err);
       results.elevenlabs = `failed: ${err.message || err}`;
     }
   }

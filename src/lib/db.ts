@@ -204,10 +204,11 @@ export interface AnalyticsSummary {
 // 2. Setup Supabase Client
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
-const isSupabaseConfigured = supabaseUrl !== "" && supabaseAnonKey !== "";
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
+const isSupabaseConfigured = supabaseUrl !== "" && (supabaseAnonKey !== "" || supabaseServiceKey !== "");
 
 export const supabase = isSupabaseConfigured 
-  ? createClient(supabaseUrl, supabaseAnonKey) 
+  ? createClient(supabaseUrl, supabaseServiceKey || supabaseAnonKey) 
   : null;
 
 // 3. Local JSON Database Path
@@ -469,611 +470,691 @@ const DEFAULT_MOCK_DB: MockSchema = {
       created_at: new Date().toISOString(),
     }
   ],
-  support_tickets: [
-    {
-      id: "tkt-1",
-      business_id: "demo-business-id",
-      customer_id: "cust-2",
-      subject: "Charger port not working",
-      issue_description: "Charging station pins are damaged. The mop does not connect properly.",
-      status: "escalated",
-      priority: "high",
-      created_at: new Date().toISOString(),
-    }
-  ],
-  subscriptions: [
-    {
-      id: "sub-1",
-      business_id: "demo-business-id",
-      plan: "pro",
-      status: "active",
-      billing_cycle_start: new Date().toISOString(),
-      billing_cycle_end: new Date(Date.now() + 86400000 * 30).toISOString(),
-      created_at: new Date().toISOString(),
-    }
-  ],
-  payments: [
-    {
-      id: "pay-1",
-      business_id: "demo-business-id",
-      subscription_id: "sub-1",
-      amount: 14999,
-      status: "success",
-      razorpay_payment_id: "pay_mock_razorpay_12345",
-      created_at: new Date().toISOString(),
-    }
-  ],
-  analytics: [
-    {
-      id: "an-1",
-      business_id: "demo-business-id",
-      date: new Date().toISOString().split('T')[0],
-      total_calls: 15,
-      leads_count: 8,
-      appointments_count: 3,
-      escalations_count: 2,
-      satisfaction_score: 4.6,
-      revenue: 14999,
-      created_at: new Date().toISOString(),
-    }
-  ]
+  support_tickets: [],
+  subscriptions: [],
+  payments: [],
+  analytics: []
 };
 
-// --- JSON Persistence Helpers ---
-function getMockDb(): MockSchema {
-  let db: MockSchema;
-  if (typeof window !== "undefined") {
-    const localData = localStorage.getItem("swara_saas_db");
-    if (localData) {
-      try {
-        db = JSON.parse(localData);
-      } catch (e) {
-        db = DEFAULT_MOCK_DB;
-      }
-    } else {
-      db = DEFAULT_MOCK_DB;
-    }
-  } else {
-    try {
-      if (!fs.existsSync(MOCK_DB_FILE)) {
-        const dir = path.dirname(MOCK_DB_FILE);
-        if (!fs.existsSync(dir)) {
-          fs.mkdirSync(dir, { recursive: true });
-        }
-        fs.writeFileSync(MOCK_DB_FILE, JSON.stringify(DEFAULT_MOCK_DB, null, 2), "utf8");
-        db = DEFAULT_MOCK_DB;
-      } else {
-        const data = fs.readFileSync(MOCK_DB_FILE, "utf8");
-        db = JSON.parse(data);
-      }
-    } catch (err) {
-      console.error("Error reading mock DB file:", err);
-      db = DEFAULT_MOCK_DB;
-    }
-  }
-
-  // Self-healing / Schema migration: ensure all fields from MockSchema are defined
-  const keys = Object.keys(DEFAULT_MOCK_DB) as Array<keyof MockSchema>;
-  let updated = false;
-  for (const key of keys) {
-    if (!db[key] || !Array.isArray(db[key])) {
-      db[key] = (DEFAULT_MOCK_DB[key] || []) as any;
-      updated = true;
-    }
-  }
-  if (updated) {
-    saveMockDb(db);
-  }
-
-  return db;
-}
-
-function saveMockDb(db: MockSchema) {
-  if (typeof window !== "undefined") {
-    localStorage.setItem("swara_saas_db", JSON.stringify(db));
-    return;
-  }
-  try {
-    fs.writeFileSync(MOCK_DB_FILE, JSON.stringify(db, null, 2), "utf8");
-  } catch (err) {
-    console.error("Error writing mock DB file:", err);
-  }
-}
-
-// 4. CRUD DB Operations for all 17 Tables
+// 4. CRUD DB Operations for all 17 Tables querying production Supabase
 export const dbService = {
   isMock: () => !isSupabaseConfigured,
 
+  // Helper check to enforce Supabase connection
+  _ensureSupabase() {
+    if (!supabase) {
+      throw new Error("[Supabase Database Failure] Component: Supabase Database Client - Supabase credentials are not configured. NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY (or SUPABASE_SERVICE_ROLE_KEY) are required.");
+    }
+  },
+
   // --- Users & Workspace Auth ---
   async getUserByEmail(email: string): Promise<User | null> {
-    const db = getMockDb();
-    return db.users.find(u => u.email.toLowerCase() === email.toLowerCase()) || null;
+    this._ensureSupabase();
+    const { data, error } = await supabase!
+      .from("users")
+      .select("*")
+      .eq("email", email.toLowerCase())
+      .maybeSingle();
+    if (error) throw error;
+    return data;
   },
 
   async createUser(email: string, passwordHash: string, role: "user" | "super_admin"): Promise<User> {
-    const db = getMockDb();
-    const newUser: User = {
-      id: `usr-${Math.random().toString(36).substr(2, 9)}`,
-      email,
-      password_hash: passwordHash,
-      role,
-      created_at: new Date().toISOString()
-    };
-    db.users.push(newUser);
-    saveMockDb(db);
-    return newUser;
+    this._ensureSupabase();
+    const { data, error } = await supabase!
+      .from("users")
+      .insert({
+        email,
+        password_hash: passwordHash,
+        role
+      })
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
   },
 
   async getPlatformStats(): Promise<any> {
-    const db = getMockDb();
+    this._ensureSupabase();
+    const [usersRes, businessesRes, callsRes, leadsRes, subscriptionsRes, paymentsRes] = await Promise.all([
+      supabase!.from("users").select("id", { count: "exact", head: true }),
+      supabase!.from("businesses").select("id", { count: "exact", head: true }),
+      supabase!.from("calls").select("id", { count: "exact", head: true }),
+      supabase!.from("customers").select("id", { count: "exact", head: true }).eq("is_lead", true),
+      supabase!.from("subscriptions").select("id", { count: "exact", head: true }),
+      supabase!.from("payments").select("amount, status").eq("status", "success")
+    ]);
+    
+    if (usersRes.error) throw usersRes.error;
+    if (businessesRes.error) throw businessesRes.error;
+    if (callsRes.error) throw callsRes.error;
+    if (leadsRes.error) throw leadsRes.error;
+    if (subscriptionsRes.error) throw subscriptionsRes.error;
+    if (paymentsRes.error) throw paymentsRes.error;
+
+    const totalRevenue = (paymentsRes.data || []).reduce((acc: number, p: any) => acc + Number(p.amount || 0), 0);
     return {
-      totalUsers: db.users.length,
-      totalBusinesses: db.businesses.length,
-      totalCalls: db.calls.length,
-      totalLeads: db.customers.filter(c => c.is_lead).length,
-      totalSubscriptions: db.subscriptions.length,
-      totalRevenue: db.payments.reduce((acc, p) => acc + (p.status === "success" ? p.amount : 0), 0)
+      totalUsers: usersRes.count || 0,
+      totalBusinesses: businessesRes.count || 0,
+      totalCalls: callsRes.count || 0,
+      totalLeads: leadsRes.count || 0,
+      totalSubscriptions: subscriptionsRes.count || 0,
+      totalRevenue
     };
   },
 
   async deleteUser(userId: string): Promise<void> {
-    const db = getMockDb();
-    db.users = db.users.filter(u => u.id !== userId);
-    saveMockDb(db);
+    this._ensureSupabase();
+    const { error } = await supabase!.from("users").delete().eq("id", userId);
+    if (error) throw error;
   },
 
   // --- Businesses ---
   async getBusiness(userId: string): Promise<Business | null> {
-    const db = getMockDb();
-    return db.businesses.find(b => b.user_id === userId) || null;
+    this._ensureSupabase();
+    const { data, error } = await supabase!
+      .from("businesses")
+      .select("*")
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (error) throw error;
+    return data;
   },
 
   async createBusiness(businessName: string, category: string, phone: string, userId: string): Promise<Business> {
-    const db = getMockDb();
-    const newBusiness: Business = {
-      id: `bus-${Math.random().toString(36).substr(2, 9)}`,
-      user_id: userId,
-      business_name: businessName,
-      description: `Customer service line for ${businessName}.`,
-      category,
-      address: "India",
-      phone,
-      email: `contact@${businessName.toLowerCase().replace(/\s+/g, "")}.com`,
-      website: `https://${businessName.toLowerCase().replace(/\s+/g, "")}.com`,
-      working_hours: "09:00 - 18:00",
-      service_locations: "All India",
-      created_at: new Date().toISOString()
-    };
-    db.businesses.push(newBusiness);
-    saveMockDb(db);
-    return newBusiness;
+    this._ensureSupabase();
+    const { data, error } = await supabase!
+      .from("businesses")
+      .insert({
+        user_id: userId,
+        business_name: businessName,
+        description: `Customer service line for ${businessName}.`,
+        category,
+        address: "India",
+        phone,
+        email: `contact@${businessName.toLowerCase().replace(/\s+/g, "")}.com`,
+        website: `https://${businessName.toLowerCase().replace(/\s+/g, "")}.com`,
+        working_hours: "09:00 - 18:00",
+        service_locations: "All India"
+      })
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
   },
 
   async updateBusiness(id: string, updates: Partial<Business>): Promise<Business> {
-    const db = getMockDb();
-    const index = db.businesses.findIndex(b => b.id === id);
-    if (index === -1) throw new Error("Business not found");
-    db.businesses[index] = { ...db.businesses[index], ...updates };
-    saveMockDb(db);
-    return db.businesses[index];
+    this._ensureSupabase();
+    const { data, error } = await supabase!
+      .from("businesses")
+      .update(updates)
+      .eq("id", id)
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
   },
 
   // --- Agents ---
   async getAgents(businessId: string): Promise<Agent[]> {
-    const db = getMockDb();
-    return db.agents.filter(a => a.business_id === businessId);
+    this._ensureSupabase();
+    const { data, error } = await supabase!
+      .from("agents")
+      .select("*")
+      .eq("business_id", businessId);
+    if (error) throw error;
+    return data || [];
   },
 
   async getAgent(agentId: string): Promise<Agent | null> {
-    const db = getMockDb();
-    return db.agents.find(a => a.id === agentId) || null;
+    this._ensureSupabase();
+    const { data, error } = await supabase!
+      .from("agents")
+      .select("*")
+      .eq("id", agentId)
+      .maybeSingle();
+    if (error) throw error;
+    return data;
   },
 
   async createAgent(businessId: string, name: string, language: string, voiceProvider: string, voiceId: string, systemPrompt: string): Promise<Agent> {
-    const db = getMockDb();
-    const newAgent: Agent = {
-      id: `agent-${Math.random().toString(36).substr(2, 9)}`,
-      business_id: businessId,
-      name,
-      personality: "Polite customer assistant.",
-      language,
-      greeting_message: language === "Kannada" ? `ನಮಸ್ಕಾರ! ನಾನು ${name}. ನಿಮಗೆ ಹೇಗೆ ಸಹಾಯ ಮಾಡಲಿ?` : `Hello! I am ${name}. How can I assist you?`,
-      working_hours: "09:00 - 18:00",
-      voice_provider: voiceProvider,
-      voice_id: voiceId,
-      system_prompt: systemPrompt,
-      escalation_rules: "Transfer to manager on anger or refund request.",
-      fallback_response: "Let me check with a live agent.",
-      created_at: new Date().toISOString()
-    };
-    db.agents.push(newAgent);
-    saveMockDb(db);
-    return newAgent;
+    this._ensureSupabase();
+    const { data, error } = await supabase!
+      .from("agents")
+      .insert({
+        business_id: businessId,
+        name,
+        personality: "Polite customer assistant.",
+        language,
+        greeting_message: language === "Kannada" ? `ನಮಸ್ಕಾರ! ನಾನು ${name}. ನಿಮಗೆ ಹೇಗೆ ಸಹಾಯ ಮಾಡಲಿ?` : `Hello! I am ${name}. How can I assist you?`,
+        working_hours: "09:00 - 18:00",
+        voice_provider: voiceProvider,
+        voice_id: voiceId,
+        system_prompt: systemPrompt,
+        escalation_rules: "Transfer to manager on anger or refund request.",
+        fallback_response: "Let me check with a live agent."
+      })
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
   },
 
   async updateAgent(agentId: string, updates: Partial<Agent>): Promise<Agent> {
-    const db = getMockDb();
-    const index = db.agents.findIndex(a => a.id === agentId);
-    if (index === -1) throw new Error("Agent not found");
-    db.agents[index] = { ...db.agents[index], ...updates };
-    saveMockDb(db);
-    return db.agents[index];
+    this._ensureSupabase();
+    const { data, error } = await supabase!
+      .from("agents")
+      .update(updates)
+      .eq("id", agentId)
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
   },
 
   // --- Products ---
   async getProducts(businessId: string): Promise<Product[]> {
-    const db = getMockDb();
-    return db.products.filter(p => p.business_id === businessId);
+    this._ensureSupabase();
+    const { data, error } = await supabase!
+      .from("products")
+      .select("*")
+      .eq("business_id", businessId);
+    if (error) throw error;
+    return data || [];
   },
 
   async addProduct(businessId: string, product: Omit<Product, "id" | "business_id" | "created_at">): Promise<Product> {
-    const db = getMockDb();
-    const newProd: Product = {
-      id: `prod-${Math.random().toString(36).substr(2, 9)}`,
-      business_id: businessId,
-      ...product,
-      created_at: new Date().toISOString()
-    };
-    db.products.push(newProd);
-    saveMockDb(db);
-    return newProd;
+    this._ensureSupabase();
+    const { data, error } = await supabase!
+      .from("products")
+      .insert({
+        business_id: businessId,
+        ...product
+      })
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
   },
 
   async deleteProduct(productId: string): Promise<void> {
-    const db = getMockDb();
-    db.products = db.products.filter(p => p.id !== productId);
-    saveMockDb(db);
+    this._ensureSupabase();
+    const { error } = await supabase!.from("products").delete().eq("id", productId);
+    if (error) throw error;
   },
 
   // --- Services ---
   async getServices(businessId: string): Promise<Service[]> {
-    const db = getMockDb();
-    return db.services.filter(s => s.business_id === businessId);
+    this._ensureSupabase();
+    const { data, error } = await supabase!
+      .from("services")
+      .select("*")
+      .eq("business_id", businessId);
+    if (error) throw error;
+    return data || [];
   },
 
   async addService(businessId: string, service: Omit<Service, "id" | "business_id" | "created_at">): Promise<Service> {
-    const db = getMockDb();
-    const newServ: Service = {
-      id: `serv-${Math.random().toString(36).substr(2, 9)}`,
-      business_id: businessId,
-      ...service,
-      created_at: new Date().toISOString()
-    };
-    db.services.push(newServ);
-    saveMockDb(db);
-    return newServ;
+    this._ensureSupabase();
+    const { data, error } = await supabase!
+      .from("services")
+      .insert({
+        business_id: businessId,
+        ...service
+      })
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
   },
 
   async deleteService(serviceId: string): Promise<void> {
-    const db = getMockDb();
-    db.services = db.services.filter(s => s.id !== serviceId);
-    saveMockDb(db);
+    this._ensureSupabase();
+    const { error } = await supabase!.from("services").delete().eq("id", serviceId);
+    if (error) throw error;
   },
 
   // --- Knowledge Base & Documents ---
   async getKnowledgeBase(businessId: string): Promise<FAQItem[]> {
-    const db = getMockDb();
-    return db.knowledge_base.filter(kb => kb.business_id === businessId);
+    this._ensureSupabase();
+    const { data, error } = await supabase!
+      .from("knowledge_base")
+      .select("*")
+      .eq("business_id", businessId);
+    if (error) throw error;
+    return data || [];
   },
 
   async addFAQ(businessId: string, question: string, answer: string): Promise<FAQItem> {
-    const db = getMockDb();
-    const newFAQ: FAQItem = {
-      id: `faq-${Math.random().toString(36).substr(2, 9)}`,
-      business_id: businessId,
-      question,
-      answer,
-      created_at: new Date().toISOString()
-    };
-    db.knowledge_base.push(newFAQ);
-    saveMockDb(db);
-    return newFAQ;
+    this._ensureSupabase();
+    const { data, error } = await supabase!
+      .from("knowledge_base")
+      .insert({
+        business_id: businessId,
+        question,
+        answer
+      })
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
   },
 
   async deleteFAQ(faqId: string): Promise<void> {
-    const db = getMockDb();
-    db.knowledge_base = db.knowledge_base.filter(kb => kb.id !== faqId);
-    saveMockDb(db);
+    this._ensureSupabase();
+    const { error } = await supabase!.from("knowledge_base").delete().eq("id", faqId);
+    if (error) throw error;
   },
 
   async getDocuments(businessId: string): Promise<DocumentItem[]> {
-    const db = getMockDb();
-    return db.documents.filter(d => d.business_id === businessId);
+    this._ensureSupabase();
+    const { data, error } = await supabase!
+      .from("documents")
+      .select("*")
+      .eq("business_id", businessId);
+    if (error) throw error;
+    return data || [];
   },
 
   async addDocument(businessId: string, name: string, fileType: string, textContent: string): Promise<DocumentItem> {
-    const db = getMockDb();
-    const newDoc: DocumentItem = {
-      id: `doc-${Math.random().toString(36).substr(2, 9)}`,
-      business_id: businessId,
-      name,
-      file_type: fileType,
-      text_content: textContent,
-      created_at: new Date().toISOString()
-    };
-    db.documents.push(newDoc);
-    saveMockDb(db);
-    return newDoc;
+    this._ensureSupabase();
+    const { data, error } = await supabase!
+      .from("documents")
+      .insert({
+        business_id: businessId,
+        name,
+        file_type: fileType,
+        text_content: textContent
+      })
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
   },
 
   async deleteDocument(docId: string): Promise<void> {
-    const db = getMockDb();
-    db.documents = db.documents.filter(d => d.id !== docId);
-    saveMockDb(db);
+    this._ensureSupabase();
+    const { error } = await supabase!.from("documents").delete().eq("id", docId);
+    if (error) throw error;
   },
 
   // --- Call Logs & Transcripts ---
   async getConversations(businessId: string): Promise<Call[]> {
-    const db = getMockDb();
-    return db.calls
-      .filter(c => c.business_id === businessId)
-      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    this._ensureSupabase();
+    const { data, error } = await supabase!
+      .from("calls")
+      .select("*")
+      .eq("business_id", businessId)
+      .order("created_at", { ascending: false });
+    if (error) throw error;
+    return data || [];
   },
 
   async createConversation(businessId: string, agentId: string, customerName: string): Promise<Call> {
-    const db = getMockDb();
-    const newCall: Call = {
-      id: `call-${Math.random().toString(36).substr(2, 9)}`,
-      business_id: businessId,
-      agent_id: agentId,
-      customer_id: "cust-temp",
-      customer_name: customerName,
-      duration_seconds: 0,
-      status: "active",
-      summary: "",
-      sentiment: "neutral",
-      outcome: "Call Active",
-      recording_url: "",
-      created_at: new Date().toISOString()
-    };
-    db.calls.push(newCall);
-    saveMockDb(db);
-    return newCall;
+    this._ensureSupabase();
+    const { data, error } = await supabase!
+      .from("calls")
+      .insert({
+        business_id: businessId,
+        agent_id: agentId,
+        customer_id: "cust-temp",
+        customer_name: customerName,
+        duration_seconds: 0,
+        status: "active",
+        summary: "",
+        sentiment: "neutral",
+        outcome: "Call Active",
+        recording_url: ""
+      })
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
   },
 
   async updateConversation(conversationId: string, updates: Partial<Call>): Promise<Call> {
-    const db = getMockDb();
-    const index = db.calls.findIndex(c => c.id === conversationId);
-    if (index === -1) throw new Error("Conversation not found");
-    db.calls[index] = { ...db.calls[index], ...updates };
-    saveMockDb(db);
-    return db.calls[index];
+    this._ensureSupabase();
+    const { data, error } = await supabase!
+      .from("calls")
+      .update(updates)
+      .eq("id", conversationId)
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
   },
 
   // --- Messages ---
   async getMessages(conversationId: string): Promise<Message[]> {
-    const db = getMockDb();
-    return db.messages
-      .filter(m => m.conversation_id === conversationId)
-      .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+    this._ensureSupabase();
+    const { data, error } = await supabase!
+      .from("messages")
+      .select("*")
+      .eq("conversation_id", conversationId)
+      .order("created_at", { ascending: true });
+    if (error) throw error;
+    return data || [];
   },
 
   async createMessage(conversationId: string, role: "user" | "assistant" | "system", content: string, audioUrl?: string): Promise<Message> {
-    const db = getMockDb();
-    const newMsg: Message = {
-      id: `msg-${Math.random().toString(36).substr(2, 9)}`,
-      conversation_id: conversationId,
-      role,
-      content,
-      audio_url: audioUrl,
-      created_at: new Date().toISOString()
-    };
-    db.messages.push(newMsg);
-    saveMockDb(db);
-    return newMsg;
+    this._ensureSupabase();
+    const { data, error } = await supabase!
+      .from("messages")
+      .insert({
+        conversation_id: conversationId,
+        role,
+        content,
+        audio_url: audioUrl
+      })
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
   },
 
   // --- Customers & Leads CRM ---
   async getCustomers(businessId: string): Promise<Customer[]> {
-    const db = getMockDb();
-    return db.customers.filter(c => c.business_id === businessId);
+    this._ensureSupabase();
+    const { data, error } = await supabase!
+      .from("customers")
+      .select("*")
+      .eq("business_id", businessId);
+    if (error) throw error;
+    return data || [];
   },
 
   async getLeads(businessId: string): Promise<Customer[]> {
-    const db = getMockDb();
-    return db.customers.filter(c => c.business_id === businessId && c.is_lead);
+    this._ensureSupabase();
+    const { data, error } = await supabase!
+      .from("customers")
+      .select("*")
+      .eq("business_id", businessId)
+      .eq("is_lead", true);
+    if (error) throw error;
+    return data || [];
   },
 
   async upsertCustomer(businessId: string, phone: string, updates: Partial<Omit<Customer, "id" | "business_id" | "phone" | "created_at">>): Promise<Customer> {
-    const db = getMockDb();
-    let custIndex = db.customers.findIndex(c => c.business_id === businessId && c.phone === phone);
-    
-    if (custIndex === -1) {
-      const newCust: Customer = {
-        id: `cust-${Math.random().toString(36).substr(2, 9)}`,
-        business_id: businessId,
-        name: updates.name || "Unknown Customer",
-        phone,
-        city: updates.city || "Unknown City",
-        budget: updates.budget || 0,
-        requirements: updates.requirements || "",
-        callback_time: updates.callback_time || "",
-        lead_score: updates.lead_score || 50,
-        is_lead: updates.is_lead !== undefined ? updates.is_lead : true,
-        created_at: new Date().toISOString()
-      };
-      db.customers.push(newCust);
-      saveMockDb(db);
-      return newCust;
+    this._ensureSupabase();
+    const { data: existing, error: getErr } = await supabase!
+      .from("customers")
+      .select("*")
+      .eq("business_id", businessId)
+      .eq("phone", phone)
+      .maybeSingle();
+    if (getErr) throw getErr;
+
+    if (existing) {
+      const { data, error } = await supabase!
+        .from("customers")
+        .update(updates)
+        .eq("id", existing.id)
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
     } else {
-      db.customers[custIndex] = { ...db.customers[custIndex], ...updates };
-      saveMockDb(db);
-      return db.customers[custIndex];
+      const { data, error } = await supabase!
+        .from("customers")
+        .insert({
+          business_id: businessId,
+          phone,
+          name: updates.name || "Unknown Customer",
+          city: updates.city || "Unknown City",
+          budget: updates.budget || 0,
+          requirements: updates.requirements || "",
+          callback_time: updates.callback_time || "",
+          lead_score: updates.lead_score || 50,
+          is_lead: updates.is_lead !== undefined ? updates.is_lead : true
+        })
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
     }
   },
 
   // --- Orders & Refunds ---
   async getOrders(businessId: string): Promise<Order[]> {
-    const db = getMockDb();
-    return db.orders.filter(o => o.business_id === businessId);
+    this._ensureSupabase();
+    const { data, error } = await supabase!
+      .from("orders")
+      .select("*")
+      .eq("business_id", businessId);
+    if (error) throw error;
+    return data || [];
   },
 
   async getOrder(businessId: string, orderId: string): Promise<Order | null> {
-    const db = getMockDb();
-    return db.orders.find(o => o.business_id === businessId && o.id === orderId) || null;
+    this._ensureSupabase();
+    const { data, error } = await supabase!
+      .from("orders")
+      .select("*")
+      .eq("business_id", businessId)
+      .eq("id", orderId)
+      .maybeSingle();
+    if (error) throw error;
+    return data;
   },
 
   async createOrder(businessId: string, customerId: string, productId: string, status: Order["status"]): Promise<Order> {
-    const db = getMockDb();
-    const newOrder: Order = {
-      id: `ord-${Math.random().toString(36).substr(2, 9)}`,
-      business_id: businessId,
-      customer_id: customerId,
-      product_id: productId,
-      status,
-      tracking_number: `TRK-SM-${Math.floor(100000 + Math.random() * 900000)}`,
-      delivery_date: new Date(Date.now() + 86400000 * 3).toISOString().split('T')[0],
-      created_at: new Date().toISOString()
-    };
-    db.orders.push(newOrder);
-    saveMockDb(db);
-    return newOrder;
+    this._ensureSupabase();
+    const { data, error } = await supabase!
+      .from("orders")
+      .insert({
+        business_id: businessId,
+        customer_id: customerId,
+        product_id: productId,
+        status,
+        tracking_number: `TRK-SM-${Math.floor(100000 + Math.random() * 900000)}`,
+        delivery_date: new Date(Date.now() + 86400000 * 3).toISOString().split('T')[0]
+      })
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
   },
 
   async getRefunds(businessId: string): Promise<Refund[]> {
-    const db = getMockDb();
-    return db.refunds.filter(r => r.business_id === businessId);
+    this._ensureSupabase();
+    const { data, error } = await supabase!
+      .from("refunds")
+      .select("*")
+      .eq("business_id", businessId);
+    if (error) throw error;
+    return data || [];
   },
 
   async createRefund(businessId: string, orderId: string, amount: number, reason: string): Promise<Refund> {
-    const db = getMockDb();
-    const newRefund: Refund = {
-      id: `ref-${Math.random().toString(36).substr(2, 9)}`,
-      business_id: businessId,
-      order_id: orderId,
-      status: "pending",
-      amount,
-      reason,
-      created_at: new Date().toISOString()
-    };
-    db.refunds.push(newRefund);
-    saveMockDb(db);
-    return newRefund;
+    this._ensureSupabase();
+    const { data, error } = await supabase!
+      .from("refunds")
+      .insert({
+        business_id: businessId,
+        order_id: orderId,
+        status: "pending",
+        amount,
+        reason
+      })
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
   },
 
   async updateRefund(refundId: string, status: Refund["status"]): Promise<Refund> {
-    const db = getMockDb();
-    const index = db.refunds.findIndex(r => r.id === refundId);
-    if (index === -1) throw new Error("Refund not found");
-    db.refunds[index].status = status;
-    saveMockDb(db);
-    return db.refunds[index];
+    this._ensureSupabase();
+    const { data, error } = await supabase!
+      .from("refunds")
+      .update({ status })
+      .eq("id", refundId)
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
   },
 
   // --- Appointments ---
   async getAppointments(businessId: string): Promise<Appointment[]> {
-    const db = getMockDb();
-    return db.appointments.filter(a => a.business_id === businessId);
+    this._ensureSupabase();
+    const { data, error } = await supabase!
+      .from("appointments")
+      .select("*")
+      .eq("business_id", businessId);
+    if (error) throw error;
+    return data || [];
   },
 
   async createAppointment(businessId: string, customerId: string, agentId: string, date: string, time: string, notes: string): Promise<Appointment> {
-    const db = getMockDb();
-    const newApp: Appointment = {
-      id: `app-${Math.random().toString(36).substr(2, 9)}`,
-      business_id: businessId,
-      customer_id: customerId,
-      agent_id: agentId,
-      date,
-      time,
-      status: "confirmed",
-      notes,
-      created_at: new Date().toISOString()
-    };
-    db.appointments.push(newApp);
-    saveMockDb(db);
-    return newApp;
+    this._ensureSupabase();
+    const { data, error } = await supabase!
+      .from("appointments")
+      .insert({
+        business_id: businessId,
+        customer_id: customerId,
+        agent_id: agentId,
+        date,
+        time,
+        status: "confirmed",
+        notes
+      })
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
   },
 
   // --- Support Tickets ---
   async getSupportTickets(businessId: string): Promise<SupportTicket[]> {
-    const db = getMockDb();
-    return db.support_tickets.filter(t => t.business_id === businessId);
+    this._ensureSupabase();
+    const { data, error } = await supabase!
+      .from("support_tickets")
+      .select("*")
+      .eq("business_id", businessId);
+    if (error) throw error;
+    return data || [];
   },
 
   async createSupportTicket(businessId: string, customerId: string, subject: string, desc: string, priority: SupportTicket["priority"]): Promise<SupportTicket> {
-    const db = getMockDb();
-    const newTkt: SupportTicket = {
-      id: `tkt-${Math.random().toString(36).substr(2, 9)}`,
-      business_id: businessId,
-      customer_id: customerId,
-      subject,
-      issue_description: desc,
-      status: "open",
-      priority,
-      created_at: new Date().toISOString()
-    };
-    db.support_tickets.push(newTkt);
-    saveMockDb(db);
-    return newTkt;
+    this._ensureSupabase();
+    const { data, error } = await supabase!
+      .from("support_tickets")
+      .insert({
+        business_id: businessId,
+        customer_id: customerId,
+        subject,
+        issue_description: desc,
+        status: "open",
+        priority
+      })
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
   },
 
   async updateSupportTicket(ticketId: string, status: SupportTicket["status"]): Promise<SupportTicket> {
-    const db = getMockDb();
-    const index = db.support_tickets.findIndex(t => t.id === ticketId);
-    if (index === -1) throw new Error("Ticket not found");
-    db.support_tickets[index].status = status;
-    saveMockDb(db);
-    return db.support_tickets[index];
+    this._ensureSupabase();
+    const { data, error } = await supabase!
+      .from("support_tickets")
+      .update({ status })
+      .eq("id", ticketId)
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
   },
 
   // --- Subscriptions & Razorpay Simulated Payments ---
   async getSubscription(businessId: string): Promise<Subscription | null> {
-    const db = getMockDb();
-    return db.subscriptions.find(s => s.business_id === businessId) || null;
+    this._ensureSupabase();
+    const { data, error } = await supabase!
+      .from("subscriptions")
+      .select("*")
+      .eq("business_id", businessId)
+      .maybeSingle();
+    if (error) throw error;
+    return data;
   },
 
   async getPayments(businessId: string): Promise<Payment[]> {
-    const db = getMockDb();
-    return db.payments.filter(p => p.business_id === businessId);
+    this._ensureSupabase();
+    const { data, error } = await supabase!
+      .from("payments")
+      .select("*")
+      .eq("business_id", businessId);
+    if (error) throw error;
+    return data || [];
   },
 
   async createSubscriptionPayment(businessId: string, plan: Subscription["plan"], amount: number, razorpayPaymentId: string): Promise<{ subscription: Subscription; payment: Payment }> {
-    const db = getMockDb();
+    this._ensureSupabase();
     
-    // Create or update subscription
-    let subIndex = db.subscriptions.findIndex(s => s.business_id === businessId);
-    let sub: Subscription;
-    
-    if (subIndex === -1) {
-      sub = {
-        id: `sub-${Math.random().toString(36).substr(2, 9)}`,
-        business_id: businessId,
-        plan,
-        status: "active",
-        billing_cycle_start: new Date().toISOString(),
-        billing_cycle_end: new Date(Date.now() + 86400000 * 30).toISOString(),
-        created_at: new Date().toISOString()
-      };
-      db.subscriptions.push(sub);
+    // Create/Update subscription
+    const existing = await this.getSubscription(businessId);
+    let sub;
+    if (existing) {
+      const { data, error } = await supabase!
+        .from("subscriptions")
+        .update({
+          plan,
+          status: "active",
+          billing_cycle_start: new Date().toISOString(),
+          billing_cycle_end: new Date(Date.now() + 86400000 * 30).toISOString()
+        })
+        .eq("id", existing.id)
+        .select()
+        .single();
+      if (error) throw error;
+      sub = data;
     } else {
-      db.subscriptions[subIndex].plan = plan;
-      db.subscriptions[subIndex].status = "active";
-      db.subscriptions[subIndex].billing_cycle_start = new Date().toISOString();
-      db.subscriptions[subIndex].billing_cycle_end = new Date(Date.now() + 86400000 * 30).toISOString();
-      sub = db.subscriptions[subIndex];
+      const { data, error } = await supabase!
+        .from("subscriptions")
+        .insert({
+          business_id: businessId,
+          plan,
+          status: "active",
+          billing_cycle_start: new Date().toISOString(),
+          billing_cycle_end: new Date(Date.now() + 86400000 * 30).toISOString()
+        })
+        .select()
+        .single();
+      if (error) throw error;
+      sub = data;
     }
 
     // Record Payment
-    const payment: Payment = {
-      id: `pay-${Math.random().toString(36).substr(2, 9)}`,
-      business_id: businessId,
-      subscription_id: sub.id,
-      amount,
-      status: "success",
-      razorpay_payment_id: razorpayPaymentId,
-      created_at: new Date().toISOString()
-    };
-    db.payments.push(payment);
+    const { data: paymentData, error: payError } = await supabase!
+      .from("payments")
+      .insert({
+        business_id: businessId,
+        subscription_id: sub.id,
+        amount,
+        status: "success",
+        razorpay_payment_id: razorpayPaymentId
+      })
+      .select()
+      .single();
+    if (payError) throw payError;
     
-    saveMockDb(db);
-    return { subscription: sub, payment };
+    return { subscription: sub, payment: paymentData };
   },
 
   // --- Admin Analytics & Management ---
   async getAdminBusinessesList(): Promise<any[]> {
-    const db = getMockDb();
-    return db.businesses.map(b => {
-      const sub = db.subscriptions.find(s => s.business_id === b.id);
+    this._ensureSupabase();
+    const { data: businesses, error: busError } = await supabase!
+      .from("businesses")
+      .select("id, business_name, category, phone, created_at");
+    if (busError) throw busError;
+
+    const { data: subscriptions, error: subError } = await supabase!
+      .from("subscriptions")
+      .select("business_id, plan, status");
+    if (subError) throw subError;
+
+    return (businesses || []).map(b => {
+      const sub = (subscriptions || []).find(s => s.business_id === b.id);
       return {
         id: b.id,
         name: b.business_name,
