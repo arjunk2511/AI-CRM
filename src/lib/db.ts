@@ -504,9 +504,11 @@ export const dbService = {
 
   async createUser(email: string, passwordHash: string, role: "user" | "super_admin"): Promise<User> {
     this._ensureSupabase();
+    const id = randomUUID();
     const { data, error } = await supabase!
       .from("users")
       .insert({
+        id,
         email,
         password_hash: passwordHash,
         role
@@ -692,9 +694,11 @@ export const dbService = {
 
   async addProduct(businessId: string, product: Omit<Product, "id" | "business_id" | "created_at">): Promise<Product> {
     this._ensureSupabase();
+    const id = randomUUID();
     const { data, error } = await supabase!
       .from("products")
       .insert({
+        id,
         business_id: businessId,
         ...product
       })
@@ -723,9 +727,11 @@ export const dbService = {
 
   async addService(businessId: string, service: Omit<Service, "id" | "business_id" | "created_at">): Promise<Service> {
     this._ensureSupabase();
+    const id = randomUUID();
     const { data, error } = await supabase!
       .from("services")
       .insert({
+        id,
         business_id: businessId,
         ...service
       })
@@ -754,9 +760,11 @@ export const dbService = {
 
   async addFAQ(businessId: string, question: string, answer: string): Promise<FAQItem> {
     this._ensureSupabase();
+    const id = randomUUID();
     const { data, error } = await supabase!
       .from("knowledge_base")
       .insert({
+        id,
         business_id: businessId,
         question,
         answer
@@ -785,9 +793,11 @@ export const dbService = {
 
   async addDocument(businessId: string, name: string, fileType: string, textContent: string): Promise<DocumentItem> {
     this._ensureSupabase();
+    const id = randomUUID();
     const { data, error } = await supabase!
       .from("documents")
       .insert({
+        id,
         business_id: businessId,
         name,
         file_type: fileType,
@@ -952,9 +962,11 @@ export const dbService = {
       if (error) throw error;
       return data;
     } else {
+      const id = randomUUID();
       const { data, error } = await supabase!
         .from("customers")
         .insert({
+          id,
           business_id: businessId,
           phone,
           name: updates.name || "Unknown Customer",
@@ -997,9 +1009,11 @@ export const dbService = {
 
   async createOrder(businessId: string, customerId: string, productId: string, status: Order["status"]): Promise<Order> {
     this._ensureSupabase();
+    const id = randomUUID();
     const { data, error } = await supabase!
       .from("orders")
       .insert({
+        id,
         business_id: businessId,
         customer_id: customerId,
         product_id: productId,
@@ -1025,9 +1039,11 @@ export const dbService = {
 
   async createRefund(businessId: string, orderId: string, amount: number, reason: string): Promise<Refund> {
     this._ensureSupabase();
+    const id = randomUUID();
     const { data, error } = await supabase!
       .from("refunds")
       .insert({
+        id,
         business_id: businessId,
         order_id: orderId,
         status: "pending",
@@ -1065,9 +1081,11 @@ export const dbService = {
 
   async createAppointment(businessId: string, customerId: string, agentId: string, date: string, time: string, notes: string): Promise<Appointment> {
     this._ensureSupabase();
+    const id = randomUUID();
     const { data, error } = await supabase!
       .from("appointments")
       .insert({
+        id,
         business_id: businessId,
         customer_id: customerId,
         agent_id: agentId,
@@ -1095,9 +1113,11 @@ export const dbService = {
 
   async createSupportTicket(businessId: string, customerId: string, subject: string, desc: string, priority: SupportTicket["priority"]): Promise<SupportTicket> {
     this._ensureSupabase();
+    const id = randomUUID();
     const { data, error } = await supabase!
       .from("support_tickets")
       .insert({
+        id,
         business_id: businessId,
         customer_id: customerId,
         subject,
