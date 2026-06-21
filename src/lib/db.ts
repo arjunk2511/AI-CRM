@@ -840,12 +840,41 @@ export const dbService = {
     if (error) throw error;
     return data || [];
   },
-
   async createMessage(conversationId: string, role: "user" | "assistant" | "system", content: string, audioUrl?: string): Promise<Message> {
     this._ensureSupabase();
+    
+    // First, try inserting without generating an ID (relying on DB default)
+    try {
+      const { data, error } = await supabase!
+        .from("messages")
+        .insert({
+          conversation_id: conversationId,
+          role,
+          content,
+          audio_url: audioUrl
+        })
+        .select()
+        .single();
+      
+      if (!error && data) {
+        return data;
+      }
+      
+      if (error && !error.message.includes('column "id"') && !error.message.includes('violates not-null constraint')) {
+        throw error;
+      }
+    } catch (err: any) {
+      if (!err.message?.includes('column "id"') && !err.message?.includes('violates not-null constraint')) {
+        throw err;
+      }
+    }
+
+    // Fallback to client-side UUID generation
+    const messageId = randomUUID();
     const { data, error } = await supabase!
       .from("messages")
       .insert({
+        id: messageId,
         conversation_id: conversationId,
         role,
         content,
@@ -853,10 +882,10 @@ export const dbService = {
       })
       .select()
       .single();
+    
     if (error) throw error;
     return data;
   },
-
   // --- Customers & Leads CRM ---
   async getCustomers(businessId: string): Promise<Customer[]> {
     this._ensureSupabase();
