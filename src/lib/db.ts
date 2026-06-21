@@ -586,9 +586,11 @@ export const dbService = {
 
   async createBusiness(businessName: string, category: string, phone: string, userId: string): Promise<Business> {
     this._ensureSupabase();
+    const id = randomUUID();
     const { data, error } = await supabase!
       .from("businesses")
       .insert({
+        id,
         user_id: userId,
         business_name: businessName,
         description: `Customer service line for ${businessName}.`,
@@ -642,9 +644,11 @@ export const dbService = {
 
   async createAgent(businessId: string, name: string, language: string, voiceProvider: string, voiceId: string, systemPrompt: string): Promise<Agent> {
     this._ensureSupabase();
+    const id = randomUUID();
     const { data, error } = await supabase!
       .from("agents")
       .insert({
+        id,
         business_id: businessId,
         name,
         personality: "Polite customer assistant.",
@@ -1162,9 +1166,11 @@ export const dbService = {
       if (error) throw error;
       sub = data;
     } else {
+      const subId = randomUUID();
       const { data, error } = await supabase!
         .from("subscriptions")
         .insert({
+          id: subId,
           business_id: businessId,
           plan,
           status: "active",
@@ -1178,9 +1184,11 @@ export const dbService = {
     }
 
     // Record Payment
+    const paymentId = randomUUID();
     const { data: paymentData, error: payError } = await supabase!
       .from("payments")
       .insert({
+        id: paymentId,
         business_id: businessId,
         subscription_id: sub.id,
         amount,
