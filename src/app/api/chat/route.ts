@@ -209,8 +209,58 @@ You will format your complete response as a JSON string with the following field
         }
 
       } catch (err: any) {
-        console.error("[OpenAI API Failure] Component: OpenAI GPT-4o - Execution error details: ", err);
-        throw new Error(`OpenAI GPT-4o API execution error: ${err.message || err}`);
+        const isQuotaErr = err.status === 429 || 
+                           (err.message && (
+                             err.message.includes("429") || 
+                             err.message.toLowerCase().includes("quota") || 
+                             err.message.toLowerCase().includes("exceeded") ||
+                             err.message.toLowerCase().includes("limit")
+                           ));
+        
+        if (isQuotaErr) {
+          console.log("openai_fallback_mode = true");
+          console.warn("[OpenAI Quota Limit Hit] Entering offline local FAQ fallback mode.");
+
+          // Search FAQs for matching answer
+          let bestMatchFaq = null;
+          let maxOverlap = 0;
+          const userWords = queryLower.split(/\s+/).filter((w: string) => w.length > 1);
+
+          for (const faq of faqs) {
+            let overlap = 0;
+            const faqQ = faq.question.toLowerCase();
+            if (queryLower.includes(faqQ) || faqQ.includes(queryLower)) {
+              overlap += 10;
+            }
+            for (const word of userWords) {
+              if (faqQ.includes(word)) {
+                overlap++;
+              }
+            }
+            if (overlap > maxOverlap) {
+              maxOverlap = overlap;
+              bestMatchFaq = faq;
+            }
+          }
+
+          if (bestMatchFaq && maxOverlap > 0) {
+            reply = bestMatchFaq.answer;
+            summary = `Offline FAQ Match: ${bestMatchFaq.question}`;
+            outcome = "Information provided (local FAQ)";
+          } else {
+            reply = agent.fallback_response || (agent.language === "Kannada"
+              ? "ಕ್ಷಮಿಸಿ, ಆ ಬಗ್ಗೆ ನನ್ನ ಹತ್ತಿರ ಮಾಹಿತಿ ಇಲ್ಲ. ನನ್ನ ಮ್ಯಾನೇಜರ್‌ನೊಂದಿಗೆ ಮಾತನಾಡಲು ವರ್ಗಾಯಿಸಲೇ?"
+              : "I'm sorry, I don't have that information. Let me check with a live agent.");
+            summary = "Offline Fallback: No matching FAQ found.";
+            outcome = "General Fallback";
+          }
+          
+          sentiment = "neutral";
+          escalated = false;
+        } else {
+          console.error("[OpenAI API Failure] Component: OpenAI GPT-4o - Execution error details: ", err);
+          throw new Error(`OpenAI GPT-4o API execution error: ${err.message || err}`);
+        }
       }
     }
 
