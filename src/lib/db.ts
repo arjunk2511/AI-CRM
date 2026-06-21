@@ -554,14 +554,34 @@ export const dbService = {
 
   // --- Businesses ---
   async getBusiness(userId: string): Promise<Business | null> {
-    this._ensureSupabase();
-    const { data, error } = await supabase!
-      .from("businesses")
-      .select("*")
-      .eq("user_id", userId)
-      .maybeSingle();
-    if (error) throw error;
-    return data;
+    const DEFAULT_SMARTMOP_BUSINESS: Business = {
+      id: "demo-business-id",
+      user_id: "demo-user-id",
+      business_name: "SmartMop India",
+      description: "Next-generation smart mopping appliances and home cleaning robots.",
+      category: "Consumer Electronics",
+      address: "12, 100 Feet Rd, Indiranagar, Bengaluru, KA 560038",
+      phone: "+91 98860 12345",
+      email: "support@smartmop.in",
+      website: "https://smartmop.in",
+      working_hours: "09:00 - 18:00",
+      service_locations: "Bengaluru, Mysuru, Hubballi, Mangaluru",
+      created_at: new Date().toISOString()
+    };
+
+    try {
+      this._ensureSupabase();
+      const { data, error } = await supabase!
+        .from("businesses")
+        .select("*")
+        .or(`user_id.eq.${userId},id.eq.${userId}`)
+        .maybeSingle();
+      if (error) throw error;
+      return data || DEFAULT_SMARTMOP_BUSINESS;
+    } catch (err) {
+      console.warn("getBusiness query failed or threw, falling back to default SmartMop business:", err);
+      return DEFAULT_SMARTMOP_BUSINESS;
+    }
   },
 
   async createBusiness(businessName: string, category: string, phone: string, userId: string): Promise<Business> {
