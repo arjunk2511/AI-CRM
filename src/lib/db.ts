@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import fs from "fs";
 import path from "path";
+import { randomUUID } from "crypto";
 
 // 1. Interfaces for All 17 Database Tables
 export interface User {
@@ -794,9 +795,11 @@ export const dbService = {
 
   async createConversation(businessId: string, agentId: string, customerName: string): Promise<Call> {
     this._ensureSupabase();
+    const callId = randomUUID();
     const { data, error } = await supabase!
       .from("calls")
       .insert({
+        id: callId,
         business_id: businessId,
         agent_id: agentId,
         customer_id: "cust-temp",
