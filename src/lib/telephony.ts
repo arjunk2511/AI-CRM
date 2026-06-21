@@ -78,8 +78,7 @@ export const telephonyService = {
         const authHeader = `Basic ${Buffer.from(`${config.exotelApiKey}:${config.exotelToken}`).toString("base64")}`;
 
         const params = new URLSearchParams();
-        params.append("From", config.exotelPhone);
-        params.append("To", customerPhone);
+        params.append("From", customerPhone);
         params.append("CallerId", config.exotelPhone);
         params.append("Url", webhookUrl);
         params.append("CallType", "trans");

@@ -51,9 +51,8 @@ async function handleRequest(request: NextRequest) {
 
     // 3. Construct parameters
     const params = new URLSearchParams();
-    params.append("From", fromPhone);
-    params.append("To", toPhone);
-    params.append("CallerId", fromPhone);
+    params.append("From", toPhone); // customer phone
+    params.append("CallerId", fromPhone); // exotel phone
     params.append("Url", webhookUrl);
     params.append("CallType", "trans");
 
