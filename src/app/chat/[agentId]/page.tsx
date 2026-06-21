@@ -229,7 +229,11 @@ export default function ChatPlayground() {
       return;
     }
 
-    window.speechSynthesis.cancel();
+    try {
+      window.speechSynthesis.resume();
+      window.speechSynthesis.cancel();
+    } catch (e) {}
+
     const utterance = new SpeechSynthesisUtterance(text);
     
     const langMap: Record<string, string> = {
@@ -251,19 +255,35 @@ export default function ChatPlayground() {
     }
 
     if (onEndCallback) {
-      utterance.onend = () => {
+      let timeoutId: NodeJS.Timeout | null = null;
+      let hasExecuted = false;
+
+      const triggerCallbackOnce = () => {
+        if (hasExecuted) return;
+        hasExecuted = true;
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+          timeoutId = null;
+        }
         if (callStateRef.current === "active") {
           onEndCallback();
         }
       };
-      utterance.onerror = () => {
-        if (callStateRef.current === "active") {
-          onEndCallback();
-        }
-      };
+
+      utterance.onend = triggerCallbackOnce;
+      utterance.onerror = triggerCallbackOnce;
+      
+      // Fail-safe trigger: even if browser TTS hangs or is blocked, execute callback in max 6 seconds
+      const wordCount = text.split(/\s+/).length;
+      const estimatedMs = Math.max(1500, Math.min(6000, wordCount * 250));
+      timeoutId = setTimeout(triggerCallbackOnce, estimatedMs + 500);
     }
 
-    window.speechSynthesis.speak(utterance);
+    try {
+      window.speechSynthesis.speak(utterance);
+    } catch (err) {
+      console.warn("Speech synthesis trigger failed:", err);
+    }
   };
 
   // Submit chat logic
