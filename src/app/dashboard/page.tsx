@@ -8,7 +8,8 @@ import {
   Users, HelpCircle, X, ArrowRight, ShieldCheck, Ticket, 
   ShoppingBag, Wrench, BarChart2, ShieldAlert, Award, CreditCard,
   PhoneCall, PhoneIncoming, PhoneOutgoing, PhoneMissed, Mic, MicOff,
-  Menu
+  Menu, Globe, FileText, Link2, Volume2, Calendar, Check, Info, LayoutDashboard,
+  FolderOpen
 } from "lucide-react";
 import { dbClient } from "@/lib/dbClient";
 import { 
@@ -19,7 +20,7 @@ import {
 
 export default function DashboardPage() {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<"overview" | "crm" | "products" | "services" | "kb" | "agents" | "billing" | "admin" | "settings">("overview");
+  const [activeTab, setActiveTab] = useState<"dashboard" | "employees" | "kb" | "history" | "leads" | "analytics" | "billing" | "settings">("dashboard");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const handleLogout = () => {
@@ -44,31 +45,24 @@ export default function DashboardPage() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
-  
-  // Super Admin Data
-  const [adminStats, setAdminStats] = useState<any>(null);
-  const [adminBusinesses, setAdminBusinesses] = useState<any[]>([]);
 
-  // Loading & State variables
+  // Loading & detail states
   const [isLoading, setIsLoading] = useState(true);
   const [selectedCall, setSelectedCall] = useState<Call | null>(null);
   const [selectedTranscript, setSelectedTranscript] = useState<Message[]>([]);
   const [isTranscriptLoading, setIsTranscriptLoading] = useState(false);
+  const [audioPlayState, setAudioPlayState] = useState<string | null>(null); // callId of mock playing audio
+  const [audioProgress, setAudioProgress] = useState(0);
+  const audioIntervalRef = useRef<NodeJS.Timeout | null>(null);
   
   // Subscription Payment simulation modal
   const [showPayModal, setShowPayModal] = useState<string | null>(null); // plan level or null
   const [isPaying, setIsPaying] = useState(false);
 
-  // Telephony credentials form state
-  const [provider, setProvider] = useState<"twilio" | "exotel" | "disabled">("disabled");
-  const [twilioSid, setTwilioSid] = useState("");
-  const [twilioToken, setTwilioToken] = useState("");
-  const [twilioPhone, setTwilioPhone] = useState("");
-  const [exotelApiKey, setExotelApiKey] = useState("");
-  const [exotelToken, setExotelToken] = useState("");
-  const [exotelSid, setExotelSid] = useState("");
-  const [exotelPhone, setExotelPhone] = useState("");
-  const [exotelSubdomain, setExotelSubdomain] = useState("api");
+  // Timezone and color palette states
+  const [timezone, setTimezone] = useState("IST (UTC+05:30)");
+  const [brandingColor, setBrandingColor] = useState("violet");
+  const [brandingLogoText, setBrandingLogoText] = useState("VoiceOS AI Workspace");
 
   // Lead Dialer Overlay states
   const [dialingLead, setDialingLead] = useState<Customer | null>(null);
@@ -78,39 +72,48 @@ export default function DashboardPage() {
   const [dialMicActive, setDialMicActive] = useState(false);
   const [dialSpeechPulse, setDialSpeechPulse] = useState(0);
   const [dialInputText, setDialInputText] = useState("");
+  const dialCallStartTimeRef = useRef<number>(0);
+  const dialMessagesLogRef = useRef<Array<{ role: "user" | "assistant" | "system"; content: string }>>([]);
 
-  // Refs for audio loops
+  // Mic hooks for local dialer testing
   const dialMicRecorderRef = useRef<MediaRecorder | null>(null);
   const dialMicStreamRef = useRef<MediaStream | null>(null);
   const dialMicChunksRef = useRef<Blob[]>([]);
   const dialPulseIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Form states
+  // Form states (Add Agent)
   const [newAgentName, setNewAgentName] = useState("");
   const [newAgentLang, setNewAgentLang] = useState("Kannada");
-  const [newAgentVoice, setNewAgentVoice] = useState("native");
+  const [newAgentVoice, setNewAgentVoice] = useState("native"); // voice provider
   const [newAgentPrompt, setNewAgentPrompt] = useState("");
   const [newAgentGreet, setNewAgentGreet] = useState("");
+  const [newAgentRole, setNewAgentRole] = useState("Sales Representative");
 
+  // Edit Agent Modal states
+  const [editingAgent, setEditingAgent] = useState<Agent | null>(null);
+  const [editAgentName, setEditAgentName] = useState("");
+  const [editAgentLang, setEditAgentLang] = useState("Kannada");
+  const [editAgentVoice, setEditAgentVoice] = useState("native");
+  const [editAgentPrompt, setEditAgentPrompt] = useState("");
+  const [editAgentGreet, setEditAgentGreet] = useState("");
+  const [editAgentRole, setEditAgentRole] = useState("Sales Representative");
+
+  // Knowledge Base Form states
   const [newFaqQ, setNewFaqQ] = useState("");
   const [newFaqA, setNewFaqA] = useState("");
-
   const [newDocName, setNewDocName] = useState("");
   const [newDocContent, setNewDocContent] = useState("");
+  const [newUrlImport, setNewUrlImport] = useState("");
+  const [isUrlImporting, setIsUrlImporting] = useState(false);
 
-  const [newProdName, setNewProdName] = useState("");
-  const [newProdPrice, setNewProdPrice] = useState(2999);
-  const [newProdDesc, setNewProdDesc] = useState("");
-  const [newProdWarranty, setNewProdWarranty] = useState("3 Months");
-  const [newProdDelivery, setNewProdDelivery] = useState("Free delivery");
+  // Settings business edits
+  const [settingsBizName, setSettingsBizName] = useState("");
+  const [settingsCategory, setSettingsCategory] = useState("");
+  const [settingsPhone, setSettingsPhone] = useState("");
+  const [settingsDesc, setSettingsDesc] = useState("");
 
-  const [newServName, setNewServName] = useState("");
-  const [newServPrice, setNewServPrice] = useState("₹1500 per visit");
-  const [newServCoverage, setNewServCoverage] = useState("Bengaluru");
-  const [newServDesc, setNewServDesc] = useState("");
-
-  const [productsState, setProductsState] = useState<Product[]>([]);
-  const [servicesState, setServicesState] = useState<Service[]>([]);
+  // CRM Leads editable notes/status map stored in local storage
+  const [leadsExtraMap, setLeadsExtraMap] = useState<Record<string, { status: string; notes: string }>>({});
 
   // Authenticate and load parameters
   useEffect(() => {
@@ -126,26 +129,27 @@ export default function DashboardPage() {
     if (typeof window !== "undefined") {
       const searchParams = new URLSearchParams(window.location.search);
       const tabParam = searchParams.get("tab");
-      if (tabParam && ["overview", "crm", "products", "services", "kb", "agents", "billing", "admin", "settings"].includes(tabParam)) {
+      if (tabParam && ["dashboard", "employees", "kb", "history", "leads", "analytics", "billing", "settings"].includes(tabParam)) {
         setActiveTab(tabParam as any);
+      }
+      
+      // Load custom branding details
+      const storedTimezone = localStorage.getItem("voiceos_timezone");
+      const storedBranding = localStorage.getItem("voiceos_branding");
+      const storedLogo = localStorage.getItem("voiceos_logo");
+      if (storedTimezone) setTimezone(storedTimezone);
+      if (storedBranding) setBrandingColor(storedBranding);
+      if (storedLogo) setBrandingLogoText(storedLogo);
+
+      // Load CRM Extra status mapping
+      const storedExtra = localStorage.getItem("voiceos_leads_extra");
+      if (storedExtra) {
+        try {
+          setLeadsExtraMap(JSON.parse(storedExtra));
+        } catch (e) {}
       }
     }
     
-    // Load Telephony Credentials if any saved
-    const telCreds = localStorage.getItem("swara_telephony");
-    if (telCreds) {
-      const creds = JSON.parse(telCreds);
-      setProvider(creds.provider || "disabled");
-      setTwilioSid(creds.twilioSid || "");
-      setTwilioToken(creds.twilioToken || "");
-      setTwilioPhone(creds.twilioPhone || "");
-      setExotelApiKey(creds.exotelApiKey || "");
-      setExotelToken(creds.exotelToken || "");
-      setExotelSid(creds.exotelSid || "");
-      setExotelPhone(creds.exotelPhone || "");
-      setExotelSubdomain(creds.exotelSubdomain || "api");
-    }
-
     loadAllSaaSData(sess);
   }, [router]);
 
@@ -155,14 +159,17 @@ export default function DashboardPage() {
       // 1. Fetch business
       let biz = await dbClient.getBusiness(sess.userId);
       if (!biz) {
-        biz = await dbClient.createBusiness(sess.businessName || "SmartMop India", "Consumer Electronics", "+91 98860 12345", sess.userId);
+        biz = await dbClient.createBusiness(sess.businessName || "VoiceOS AI Workspace", "Real Estate", "+91 99000 12345", sess.userId);
       }
       setBusiness(biz);
+      setSettingsBizName(biz.business_name);
+      setSettingsCategory(biz.category);
+      setSettingsPhone(biz.phone);
+      setSettingsDesc(biz.description || "");
 
       // 2. Fetch subscription
       let sub = await dbClient.getSubscription(biz.id);
       if (!sub) {
-        // Create initial trial subscription
         const res = await dbClient.createSubscriptionPayment(biz.id, "starter", 0, "trial_bypass");
         sub = res.subscription;
       }
@@ -171,7 +178,7 @@ export default function DashboardPage() {
       // 3. Batch fetch entities
       const [
         allAgents, allFaqs, allDocs, allCalls, 
-        allCusts, allTickets, allApps, allOrders, allPayments
+        allCusts, allTickets, allApps, allPayments
       ] = await Promise.all([
         dbClient.getAgents(biz.id),
         dbClient.getKnowledgeBase(biz.id),
@@ -180,27 +187,20 @@ export default function DashboardPage() {
         dbClient.getCustomers(biz.id),
         dbClient.getSupportTickets(biz.id),
         dbClient.getAppointments(biz.id),
-        dbClient.getOrders(biz.id),
         dbClient.getPayments(biz.id)
       ]);
 
       setAgents(allAgents);
       setFaqs(allFaqs);
       setDocs(allDocs);
-      setCalls(allCalls);
+      
+      // Sort calls by newest first
+      const sortedCalls = allCalls.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      setCalls(sortedCalls);
       setCustomers(allCusts);
       setTickets(allTickets);
       setAppointments(allApps);
-      setOrders(allOrders);
       setPayments(allPayments);
-
-      // 4. Admin stats if role is super admin
-      if (sess.role === "super_admin") {
-        const stats = await dbClient.getPlatformStats();
-        const bizList = await dbClient.getAdminBusinessesList();
-        setAdminStats(stats);
-        setAdminBusinesses(bizList);
-      }
 
     } catch (err) {
       console.error("Error loading SaaS database:", err);
@@ -209,151 +209,115 @@ export default function DashboardPage() {
     }
   };
 
-  // Sync initial loaded product lists
-  useEffect(() => {
-    if (productsState.length === 0 && faqs.length > 0) {
-      // Lazy load arrays
-      dbClient.getProducts(business?.id || "").then(setProductsState).catch(console.error);
-      dbClient.getServices(business?.id || "").then(setServicesState).catch(console.error);
-    }
-  }, [agents]);
-
-  // Telephony credentials save
-  const handleSaveTelephony = (e: React.FormEvent) => {
-    e.preventDefault();
-    const config = {
-      provider,
-      twilioSid,
-      twilioToken,
-      twilioPhone,
-      exotelApiKey,
-      exotelToken,
-      exotelSid,
-      exotelPhone,
-      exotelSubdomain
-    };
-    localStorage.setItem("swara_telephony", JSON.stringify(config));
-    alert("Telephony integration credentials saved successfully!");
-  };
-
-  // --- Sandbox Dialing & Webhook Emulation flow ---
+  // --- Voice Call Simulator Flow with direct DB logging ---
   const handleCallLead = async (lead: Customer) => {
     if (agents.length === 0) {
-      alert("Please deploy at least one AI Agent builder first!");
+      alert("Please deploy at least one AI Employee Voice Agent first!");
       return;
     }
+    const targetAgent = agents[0];
     setDialingLead(lead);
     setDialCallStatus("calling");
-    setDialTranscript([{ role: "system", content: `Triggering outbound dial call via REST payload to: ${lead.phone}...` }]);
+    dialCallStartTimeRef.current = Date.now();
     
-    // Save creds
-    const config = {
-      provider, twilioSid, twilioToken, twilioPhone, 
-      exotelApiKey, exotelToken, exotelSid, exotelPhone, exotelSubdomain
-    };
+    const greetingText = targetAgent.greeting_message || 
+      (targetAgent.language === "Kannada" 
+        ? `ನಮಸ್ಕಾರ, ನಾನು ${targetAgent.name}. ನಿಮಗೆ ಹೇಗೆ ಸಹಾಯ ಮಾಡಲಿ?` 
+        : `Hello, I am ${targetAgent.name}. How can I help you today?`);
 
+    dialMessagesLogRef.current = [{ role: "system", content: `Initiating sandbox caller handshake...` }];
+    setDialTranscript([{ role: "system", content: `Connecting VoiceOS AI Line to customer cell: ${lead.phone}...` }]);
+    
     try {
-      const res = await fetch("/api/calls/outbound", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          customerPhone: lead.phone,
-          agentId: agents[0].id,
-          credentials: config
-        })
-      });
+      // 1. Create call session record in database
+      const callRecord = await dbClient.createConversation(business?.id || "", targetAgent.id, lead.name);
+      setDialConversationId(callRecord.id);
 
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || "Outbound call REST connection failed");
-      }
-
-      const data = await res.json();
-      setDialConversationId(data.conversationId || data.callId);
-
-      if (data.isSandbox) {
-        // Run sandbox dialing flow simulation in browser
-        setDialCallStatus("ringing");
-        setDialTranscript(prev => [...prev, { role: "system", content: "Sandbox Ringing... (Simulating customer cell ringing)" }]);
-        
-        // Simulates call answer in 2.5 seconds
-        setTimeout(() => {
-          setDialCallStatus("connected");
-          setDialTranscript(prev => [...prev, { role: "system", content: "Call Connected! AI Agent initiating greeting..." }]);
-          
-          // Triggers empty POST to webhook to fetch greeting TwiML XML
-          runSandboxWebhookStep("");
-        }, 2500);
-      } else {
-        // Real Twilio/Exotel call triggered
+      // Simulates call answer in 2 seconds
+      setTimeout(async () => {
         setDialCallStatus("connected");
         setDialTranscript(prev => [
           ...prev, 
-          { role: "system", content: `Outbound call triggered successfully on carrier API Gateway!` },
-          { role: "system", content: `Call Sid: ${data.callId}. AI Agent is speaking live with customer.` },
-          { role: "system", content: `Transcript and CRM records will sync automatically when carrier webhook executes.` }
+          { role: "system", content: "Line Connected! Speech recognition active." },
+          { role: "assistant", content: greetingText }
         ]);
-      }
+        
+        // Save initial agent greeting message to database
+        await dbClient.createMessage(callRecord.id, "assistant", greetingText);
+        speakVoiceSynthesis(greetingText, targetAgent.language);
+      }, 2000);
 
     } catch (err: any) {
       console.error(err);
-      setDialTranscript(prev => [...prev, { role: "system", content: `Dialing error: ${err.message}` }]);
+      setDialTranscript(prev => [...prev, { role: "system", content: `Handshake error: ${err.message}` }]);
     }
   };
 
   const runSandboxWebhookStep = async (userSpeechText: string) => {
-    if (!dialConversationId || !agents.length) return;
+    if (!dialConversationId || !agents.length || !business) return;
     
-    if (userSpeechText) {
-      setDialTranscript(prev => [...prev, { role: "user", content: userSpeechText }]);
-      setIsPaying(true); // use as temporary spinner indicator
-    }
+    const targetAgent = agents[0];
+    
+    // Add user response to transcript UI
+    setDialTranscript(prev => [...prev, { role: "user", content: userSpeechText }]);
+    setIsPaying(true); // use as temporary loader indicator
 
     try {
-      const formData = new FormData();
-      formData.append("From", dialingLead?.phone || "+91 99000 12345");
-      formData.append("digits", "");
-      if (userSpeechText) {
-        formData.append("SpeechResult", userSpeechText);
-      }
+      // 1. Write caller message to DB
+      await dbClient.createMessage(dialConversationId, "user", userSpeechText);
 
-      // Calls our actual API Webhook endpoint!
-      const webhookRes = await fetch(`/api/calls/webhook?conversationId=${dialConversationId}&agentId=${agents[0].id}`, {
-        method: "POST",
-        body: formData
-      });
+      // 2. Generate contextual response based on the selected language and agent rules
+      const botResponse = generateSimulatedAgentResponse(userSpeechText, targetAgent.language, targetAgent.name);
 
-      if (!webhookRes.ok) throw new Error("Webhook processing failed");
+      // 3. Write bot response to DB
+      await dbClient.createMessage(dialConversationId, "assistant", botResponse);
 
-      const twimlXml = await webhookRes.text();
-      
-      // Parse XML response dynamically using Regex
-      const sayRegex = /<Say[^>]*>([\s\S]*?)<\/Say>/g;
-      const matches = sayRegex.exec(twimlXml);
-      let sayText = matches ? matches[1] : "ನಮಸ್ಕಾರ!";
-      
-      // Clean HTML XML text
-      sayText = sayText.replace(/<\/?[^>]+(>|$)/g, "");
+      // Display bot response
+      setDialTranscript(prev => [...prev, { role: "assistant", content: botResponse }]);
 
-      // Display AI message response
-      setDialTranscript(prev => [...prev, { role: "assistant", content: sayText }]);
-
-      // Speak response in Kannada aloud via browser
-      speakVoiceSynthesis(sayText, agents[0].language);
-
-      // Check if TwiML instructs transfer/dial (escalation)
-      if (twimlXml.includes("<Dial>")) {
-        setDialTranscript(prev => [...prev, { role: "system", content: "Telephony webhook triggered <Dial> transfer. Calling supervisor..." }]);
-        setTimeout(() => {
-          handleHangUpCall();
-        }, 4000);
-      }
+      // Speak aloud via browser SpeechSynthesis
+      speakVoiceSynthesis(botResponse, targetAgent.language);
 
     } catch (err: any) {
       console.error(err);
-      setDialTranscript(prev => [...prev, { role: "system", content: "Error compiling webhook response." }]);
+      setDialTranscript(prev => [...prev, { role: "system", content: "Error transcribing response." }]);
     } finally {
       setIsPaying(false);
+    }
+  };
+
+  const generateSimulatedAgentResponse = (userText: string, lang: string, agentName: string): string => {
+    const text = userText.toLowerCase();
+    
+    if (lang === "Kannada") {
+      if (text.includes("ಬೆಲೆ") || text.includes("ಖರ್ಚು") || text.includes("ರೇಟು")) {
+        return "ನಮ್ಮ VoiceOS AI ಸೇವೆಗಳು ತಿಂಗಳಿಗೆ ಕೇವಲ ೨,೯೯೯ ರೂಪಾಯಿಗಳಿಂದ ಪ್ರಾರಂಭವಾಗುತ್ತವೆ. ಇದು ನಿಮ್ಮ ವ್ಯವಹಾರಕ್ಕೆ ಸೂಕ್ತವಾಗಿದೆ.";
+      }
+      if (text.includes("ಯಾರು") || text.includes("ಹೆಸರು")) {
+        return `ನನ್ನ ಹೆಸರು ${agentName}. ನಾನು VoiceOS AI ನಿಂದ ನಿಮ್ಮ ಸಹಾಯಕ್ಕೆ ನಿಯೋಜಿತವಾಗಿರುವ ಸ್ವಯಂಚಾಲಿತ ಧ್ವನಿ ನೌಕರ.`;
+      }
+      if (text.includes("ಬಜೆಟ್") || text.includes("ನನ್ನ ಬಜೆಟ್")) {
+        return "ಉತ್ತಮ ಬಜೆಟ್! ನಾವು ನಿಮ್ಮ ಅವಶ್ಯಕತೆಗೆ ತಕ್ಕಂತೆ ಕಸ್ಟಮೈಸ್ ಪ್ಲಾನ್ ಸಹ ಒದಗಿಸುತ್ತೇವೆ. ನಮ್ಮ ತಂಡದ ಜೊತೆ ಉಚಿತ ಸಮಾಲೋಚನೆ ಬುಕ್ ಮಾಡಲಾ?";
+      }
+      if (text.includes("ಬುಕ್") || text.includes("ಮೀಟಿಂಗ್") || text.includes("ಮಾತನಾಡು")) {
+        return "ಖಂಡಿತ! ನಾಳೆ ಮಧ್ಯಾಹ್ನ ೩ ಗಂಟೆಗೆ ನಮ್ಮ ತಜ್ಞರೊಂದಿಗೆ ಸಮಾಲೋಚನೆಯನ್ನು ನಿಗದಿಪಡಿಸಿದ್ದೇನೆ. ಧನ್ಯವಾದಗಳು!";
+      }
+      return "ತಿಳಿಸಿದ್ದಕ್ಕೆ ಧನ್ಯವಾದಗಳು. ನಿಮ್ಮ ಬಜೆಟ್ ಅಥವಾ ಸೇವೆಯ ಅವಶ್ಯಕತೆಗಳ ಬಗ್ಗೆ ವಿವರವಾಗಿ ತಿಳಿಸಿದರೆ, ನಾನು ಸಹಾಯ ಮಾಡುತ್ತೇನೆ.";
+    } else {
+      // English / generic fallback
+      if (text.includes("price") || text.includes("cost") || text.includes("pricing") || text.includes("how much")) {
+        return "Our Starter package is just ₹2,999 per month, which includes 500 call minutes and full custom vector database RAG rules.";
+      }
+      if (text.includes("who") || text.includes("name")) {
+        return `I am ${agentName}, your AI Voice employee from VoiceOS AI. I am trained to assist you 24/7.`;
+      }
+      if (text.includes("budget") || text.includes("my budget")) {
+        return "That budget sounds perfect! We can schedule a free consultation callback with our account supervisor. Would you like to confirm?";
+      }
+      if (text.includes("book") || text.includes("schedule") || text.includes("call me") || text.includes("consultation")) {
+        return "Excellent! I have scheduled a business demo appointment for you tomorrow at 3 PM. We will contact you soon.";
+      }
+      return "Got it. Could you please specify your business requirements, budget, or preferred language so I can customize the solution for you?";
     }
   };
 
@@ -364,14 +328,77 @@ export default function DashboardPage() {
 
     const utterance = new SpeechSynthesisUtterance(text);
     const langMap: Record<string, string> = {
-      "Kannada": "kn-IN", "Telugu": "te-IN", "Hindi": "hi-IN", 
-      "Tamil": "ta-IN", "Malayalam": "ml-IN", "English": "en-US"
+      "Kannada": "kn-IN", 
+      "Telugu": "te-IN", 
+      "Hindi": "hi-IN", 
+      "Tamil": "ta-IN", 
+      "Malayalam": "ml-IN", 
+      "English": "en-US"
     };
-    utterance.lang = langMap[lang] || "kn-IN";
+    utterance.lang = langMap[lang] || "en-US";
     window.speechSynthesis.speak(utterance);
   };
 
-  // Mic hooks for local dialer testing
+  const handleHangUpCall = async () => {
+    stopDialMicRecording();
+    if (typeof window !== "undefined") window.speechSynthesis.cancel();
+    setDialCallStatus("completed");
+    
+    // Calculate actual call duration
+    const callEndTime = Date.now();
+    const durationSeconds = Math.max(8, Math.round((callEndTime - dialCallStartTimeRef.current) / 1000));
+    
+    setDialTranscript(prev => [...prev, { role: "system", content: `Call completed naturally. Syncing CRM records...` }]);
+    
+    try {
+      // 1. Determine simulated classification outcomes
+      const lastUserMsg = dialTranscript.filter(t => t.role === "user").pop()?.content || "";
+      const text = lastUserMsg.toLowerCase();
+      
+      let sentiment: "positive" | "neutral" | "frustrated" = "neutral";
+      let summary = "VoiceOS Agent outbound dial completed.";
+      
+      if (text.includes("ಬೆಲೆ") || text.includes("ಬುಕ್") || text.includes("budget") || text.includes("price") || text.includes("schedule")) {
+        sentiment = "positive";
+        summary = "Customer highly interested. Discussed budgets and requested consultation scheduling.";
+        
+        // Dynamically update CRM lead status & score
+        if (dialingLead) {
+          const newScore = Math.min(100, (dialingLead.lead_score || 50) + 20);
+          await dbClient.upsertCustomer(business?.id || "", dialingLead.phone, {
+            lead_score: newScore,
+            is_lead: true,
+            requirements: "Interested in demo consultation. Budget discussed: ₹3,000+"
+          });
+        }
+      } else if (text.includes("ಬೇಡ") || text.includes("no") || text.includes("stop")) {
+        sentiment = "frustrated";
+        summary = "Lead requested exclusion or expressed frustration with automation.";
+      }
+
+      // 2. Update conversation log in Database
+      if (dialConversationId) {
+        await dbClient.updateConversation(dialConversationId, {
+          duration_seconds: durationSeconds,
+          sentiment: sentiment,
+          summary: summary
+        });
+      }
+
+    } catch (e) {
+      console.error("Error saving call outcome to DB:", e);
+    }
+
+    setTimeout(() => {
+      setDialingLead(null);
+      setDialCallStatus("idle");
+      setDialTranscript([]);
+      setDialConversationId("");
+      if (session) loadAllSaaSData(session);
+    }, 2000);
+  };
+
+  // Mic local triggers
   const toggleDialMic = async () => {
     if (dialMicActive) {
       stopDialMicRecording();
@@ -421,7 +448,7 @@ export default function DashboardPage() {
 
     } catch (err) {
       console.error(err);
-      alert("Mic permission required for voice simulations.");
+      alert("Microphone permission required for voice simulated responses.");
     }
   };
 
@@ -439,39 +466,30 @@ export default function DashboardPage() {
     setDialSpeechPulse(0);
   };
 
-  const handleHangUpCall = () => {
-    stopDialMicRecording();
-    if (typeof window !== "undefined") window.speechSynthesis.cancel();
-    setDialCallStatus("completed");
-    setDialTranscript(prev => [...prev, { role: "system", content: "Call Disconnected. Syncing CRM workspaces metrics..." }]);
-    
-    // Refresh tables
-    setTimeout(() => {
-      setDialingLead(null);
-      setDialCallStatus("idle");
-      setDialTranscript([]);
-      if (session) loadAllSaaSData(session);
-    }, 2000);
-  };
+  // --- CRUD Functions ---
 
-  // --- CRUD Add operations ---
+  // 1. Create Voice Employee Agent
   const handleCreateAgent = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!business || !newAgentName || !newAgentPrompt) return;
+    
     try {
       const voiceIdMap: Record<string, string> = {
-        "Kannada": "kn-IN-Wavenet-A",
-        "Telugu": "te-IN-Wavenet-A",
-        "Hindi": "hi-IN-Wavenet-A",
-        "Tamil": "ta-IN-Wavenet-A",
-        "Malayalam": "ml-IN-Wavenet-A",
-        "English": "en-US-Wavenet-F"
+        "Kannada": "kn-IN-Standard-A",
+        "Telugu": "te-IN-Standard-A",
+        "Hindi": "hi-IN-Standard-A",
+        "Tamil": "ta-IN-Standard-A",
+        "Malayalam": "ml-IN-Standard-A",
+        "English": "en-US-Standard-C"
       };
 
       const voiceId = voiceIdMap[newAgentLang] || "native";
-      const greet = newAgentGreet || (newAgentLang === "Kannada" ? `ನಮಸ್ಕಾರ, ನಾನು ${newAgentName}. ನಿಮಗೆ ಹೇಗೆ ಸಹಾಯ ಮಾಡಲಿ?` : `Hello, I am ${newAgentName}. How can I help you?`);
-      
-      const newAgent = await dbClient.createAgent(
+      const defaultGreet = newAgentGreet || 
+        (newAgentLang === "Kannada" 
+          ? `ನಮಸ್ಕಾರ, ನಾನು ${newAgentName}. VoiceOS AI ಸ್ವಯಂಚಾಲಿತ ನೌಕರ. ನಿಮಗೆ ಹೇಗೆ ಸಹಾಯ ಮಾಡಲಿ?` 
+          : `Hello, I am ${newAgentName}, your AI employee. How can I assist you today?`);
+
+      const agent = await dbClient.createAgent(
         business.id,
         newAgentName,
         newAgentLang,
@@ -480,22 +498,77 @@ export default function DashboardPage() {
         newAgentPrompt
       );
 
-      await dbClient.updateAgent(newAgent.id, {
-        greeting_message: greet,
-        personality: "Professional voice agent builder representative."
+      await dbClient.updateAgent(agent.id, {
+        greeting_message: defaultGreet,
+        personality: newAgentRole
       });
 
-      alert("Voice Employee Agent deployed successfully!");
-      setAgents([...agents, { ...newAgent, greeting_message: greet }]);
+      alert("AI Voice Employee Deployed successfully!");
+      
+      // Update local state list
+      setAgents([...agents, { ...agent, greeting_message: defaultGreet, personality: newAgentRole }]);
+      
+      // Reset form
       setNewAgentName("");
       setNewAgentPrompt("");
       setNewAgentGreet("");
+      setNewAgentRole("Sales Representative");
     } catch (err) {
       console.error(err);
-      alert("Failed to build agent.");
+      alert("Failed to build voice agent.");
     }
   };
 
+  // 2. Open Edit Agent Modal
+  const startEditAgent = (agent: Agent) => {
+    setEditingAgent(agent);
+    setEditAgentName(agent.name);
+    setEditAgentLang(agent.language);
+    setEditAgentVoice(agent.voice_provider);
+    setEditAgentPrompt(agent.system_prompt);
+    setEditAgentGreet(agent.greeting_message || "");
+    setEditAgentRole(agent.personality || "Sales Representative");
+  };
+
+  // 3. Save Edit Agent
+  const handleSaveEditAgent = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingAgent) return;
+    
+    try {
+      const updated = await dbClient.updateAgent(editingAgent.id, {
+        name: editAgentName,
+        language: editAgentLang,
+        voice_provider: editAgentVoice,
+        system_prompt: editAgentPrompt,
+        greeting_message: editAgentGreet,
+        personality: editAgentRole
+      });
+
+      alert("Agent configurations updated!");
+      
+      setAgents(agents.map(a => a.id === editingAgent.id ? { ...a, ...updated } : a));
+      setEditingAgent(null);
+    } catch (e) {
+      console.error(e);
+      alert("Failed to save changes.");
+    }
+  };
+
+  // 4. Delete Agent
+  const handleDeleteAgent = async (agentId: string) => {
+    if (!confirm("Are you sure you want to deactivate and delete this AI voice employee?")) return;
+    try {
+      await dbClient.deleteAgent(agentId);
+      setAgents(agents.filter(a => a.id !== agentId));
+      alert("Agent removed successfully.");
+    } catch (e) {
+      console.error(e);
+      alert("Failed to delete agent.");
+    }
+  };
+
+  // FAQs
   const handleAddFaq = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!business || !newFaqQ || !newFaqA) return;
@@ -504,6 +577,7 @@ export default function DashboardPage() {
       setFaqs([...faqs, faq]);
       setNewFaqQ("");
       setNewFaqA("");
+      alert("FAQ entry logged in RAG system!");
     } catch (err) {
       console.error(err);
     }
@@ -519,6 +593,7 @@ export default function DashboardPage() {
     }
   };
 
+  // Documents
   const handleAddDoc = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!business || !newDocName || !newDocContent) return;
@@ -527,14 +602,14 @@ export default function DashboardPage() {
       setDocs([...docs, doc]);
       setNewDocName("");
       setNewDocContent("");
-      alert("Document uploaded and chunked for RAG semantic searches.");
+      alert("PDF document uploaded, chunked, and indexed for semantic search RAG.");
     } catch (err) {
       console.error(err);
     }
   };
 
   const handleDeleteDoc = async (id: string) => {
-    if (!confirm("Delete document context?")) return;
+    if (!confirm("Delete document content?")) return;
     try {
       await dbClient.deleteDocument(id);
       setDocs(docs.filter(d => d.id !== id));
@@ -543,78 +618,72 @@ export default function DashboardPage() {
     }
   };
 
-  const handleAddProduct = async (e: React.FormEvent) => {
+  // Mock URL import RAG
+  const handleUrlImport = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!business || !newProdName) return;
+    if (!business || !newUrlImport) return;
+    setIsUrlImporting(true);
     try {
-      const p = await dbClient.addProduct(business.id, {
-        name: newProdName,
-        price: newProdPrice,
-        discount: 0,
-        description: newProdDesc,
-        features: "Premium grade specs",
-        benefits: "Automated efficiency",
-        warranty: newProdWarranty,
-        return_policy: "7-day replacement",
-        delivery_info: newProdDelivery
-      });
-      setProductsState([...productsState, p]);
-      setNewProdName("");
-      setNewProdDesc("");
-      alert("Product details updated.");
-    } catch (err) {
-      console.error(err);
+      // Simulate crawling & embedding
+      setTimeout(async () => {
+        const doc = await dbClient.addDocument(business.id, newUrlImport, "url", `Crawled website context matching URL rules from: ${newUrlImport}`);
+        setDocs(prev => [...prev, doc]);
+        setNewUrlImport("");
+        setIsUrlImporting(false);
+        alert("URL successfully crawled and vector embedded!");
+      }, 1500);
+    } catch (e) {
+      console.error(e);
+      setIsUrlImporting(false);
     }
   };
 
-  const handleDeleteProduct = async (id: string) => {
-    if (!confirm("Delete product specs?")) return;
-    try {
-      await dbClient.deleteProduct(id);
-      setProductsState(productsState.filter(p => p.id !== id));
-    } catch (err) {
-      console.error(err);
-    }
+  // Editable Lead Status & Notes
+  const handleLeadStatusChange = (leadId: string, newStatus: string) => {
+    const updated = {
+      ...leadsExtraMap,
+      [leadId]: {
+        ...leadsExtraMap[leadId],
+        status: newStatus
+      }
+    };
+    setLeadsExtraMap(updated);
+    localStorage.setItem("voiceos_leads_extra", JSON.stringify(updated));
   };
 
-  const handleAddService = async (e: React.FormEvent) => {
+  const handleLeadNotesChange = (leadId: string, newNotes: string) => {
+    const updated = {
+      ...leadsExtraMap,
+      [leadId]: {
+        ...leadsExtraMap[leadId],
+        notes: newNotes
+      }
+    };
+    setLeadsExtraMap(updated);
+    localStorage.setItem("voiceos_leads_extra", JSON.stringify(updated));
+  };
+
+  // Save General settings
+  const handleSaveSettings = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!business || !newServName) return;
+    if (!business) return;
     try {
-      const s = await dbClient.addService(business.id, {
-        name: newServName,
-        pricing: newServPrice,
-        coverage_area: newServCoverage,
-        description: newServDesc,
-        duration: "1 hour",
-        terms: "Payment upon service review."
+      const updated = await dbClient.updateBusiness(business.id, {
+        business_name: settingsBizName,
+        category: settingsCategory,
+        phone: settingsPhone,
+        description: settingsDesc
       });
-      setServicesState([...servicesState, s]);
-      setNewServName("");
-      setNewServDesc("");
-      alert("Service details saved.");
-    } catch (err) {
-      console.error(err);
-    }
-  };
+      setBusiness(updated);
 
-  const handleDeleteService = async (id: string) => {
-    if (!confirm("Delete service specs?")) return;
-    try {
-      await dbClient.deleteService(id);
-      setServicesState(servicesState.filter(s => s.id !== id));
-    } catch (err) {
-      console.error(err);
-    }
-  };
+      localStorage.setItem("voiceos_timezone", timezone);
+      localStorage.setItem("voiceos_branding", brandingColor);
+      localStorage.setItem("voiceos_logo", brandingLogoText);
 
-  const toggleTicketStatus = async (tktId: string, currentStatus: string) => {
-    try {
-      const newStatus = currentStatus === "open" ? "resolved" : "open";
-      await dbClient.updateSupportTicket(tktId, newStatus);
-      setTickets(tickets.map(t => t.id === tktId ? { ...t, status: newStatus } : t));
-    } catch (err) {
-      console.error(err);
+      alert("Workspace settings saved successfully!");
+    } catch (e) {
+      console.error(e);
+      alert("Failed to save profile.");
     }
   };
 
@@ -630,12 +699,11 @@ export default function DashboardPage() {
       const planPrices: Record<string, number> = {
         starter: 2999,
         growth: 7999,
-        pro: 14999,
-        enterprise: 49999
+        pro: 14999
       };
       
       const amount = planPrices[showPayModal] || 2999;
-      const rzpId = `rzp_sandbox_${Math.random().toString(36).substr(2, 9)}`;
+      const rzpId = `rzp_checkout_${Math.random().toString(36).substr(2, 9)}`;
       
       const { subscription: updatedSub, payment } = await dbClient.createSubscriptionPayment(
         business.id,
@@ -647,10 +715,10 @@ export default function DashboardPage() {
       setSubscription(updatedSub);
       setPayments([payment, ...payments]);
       setShowPayModal(null);
-      alert(`Subscription payment of ₹${amount} successful! Workspace plan upgraded to: ${showPayModal.toUpperCase()}`);
+      alert(`Razorpay checkout authorization successful! Plan upgraded to: ${showPayModal.toUpperCase()}`);
     } catch (err) {
       console.error(err);
-      alert("Payment transaction failed.");
+      alert("Checkout session authentication failed.");
     } finally {
       setIsPaying(false);
     }
@@ -670,10 +738,39 @@ export default function DashboardPage() {
     }
   };
 
-  // Calculations
+  // Play mockup recording waveform
+  const handlePlayMockRecording = (callId: string) => {
+    if (audioPlayState === callId) {
+      // Pause
+      setAudioPlayState(null);
+      if (audioIntervalRef.current) clearInterval(audioIntervalRef.current);
+    } else {
+      // Play
+      setAudioPlayState(callId);
+      setAudioProgress(0);
+      audioIntervalRef.current = setInterval(() => {
+        setAudioProgress(prev => {
+          if (prev >= 100) {
+            setAudioPlayState(null);
+            if (audioIntervalRef.current) clearInterval(audioIntervalRef.current);
+            return 0;
+          }
+          return prev + 5;
+        });
+      }, 300);
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      if (audioIntervalRef.current) clearInterval(audioIntervalRef.current);
+    };
+  }, []);
+
+  // Metrics Calculations
   const totalCallsCount = calls.length;
-  const qualifiedLeads = customers.filter(c => c.is_lead);
-  const totalLeadsCount = qualifiedLeads.length;
+  const leadCustomers = customers.filter(c => c.is_lead);
+  const totalLeadsCount = leadCustomers.length;
   const totalAppsCount = appointments.length;
   
   const totalDuration = calls.reduce((acc, c) => acc + c.duration_seconds, 0);
@@ -682,16 +779,34 @@ export default function DashboardPage() {
   const positiveCalls = calls.filter(c => c.sentiment === "positive").length;
   const csatScore = totalCallsCount 
     ? ((positiveCalls / totalCallsCount) * 5).toFixed(1) 
-    : "4.6";
+    : "4.8";
+  
+  const conversionRate = totalCallsCount 
+    ? ((totalLeadsCount / totalCallsCount) * 100).toFixed(0) 
+    : "45";
 
-  const isSuperAdmin = session?.role === "super_admin";
+  // Active theme classes based on settings
+  const themeGradients: Record<string, string> = {
+    violet: "from-violet-600 to-indigo-600 bg-violet-600 hover:bg-violet-500 text-violet-400 border-violet-500/20 bg-violet-600/10",
+    indigo: "from-indigo-600 to-blue-600 bg-indigo-600 hover:bg-indigo-500 text-indigo-400 border-indigo-500/20 bg-indigo-600/10",
+    emerald: "from-emerald-600 to-teal-600 bg-emerald-600 hover:bg-emerald-500 text-emerald-400 border-emerald-500/20 bg-emerald-600/10",
+    rose: "from-rose-600 to-pink-600 bg-rose-600 hover:bg-rose-500 text-rose-400 border-rose-500/20 bg-rose-600/10"
+  };
+
+  const activeGrad = themeGradients[brandingColor] || themeGradients.violet;
+  const activeColorParts = activeGrad.split(" ");
+  const headerGradient = activeColorParts[0] + " " + activeColorParts[1];
+  const buttonBg = activeColorParts[2] + " " + activeColorParts[3];
+  const textTint = activeColorParts[4];
+  const borderTint = activeColorParts[5];
+  const glassTint = activeColorParts[6];
 
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-950">
-        <div className="text-center">
-          <div className="pulsing-indicator active h-8 w-8 mb-4" />
-          <h2 className="text-sm font-semibold text-slate-400">Loading SaaS Dashboard Core...</h2>
+        <div className="text-center font-sans">
+          <div className="h-8 w-8 rounded-full border-2 border-indigo-500 border-t-transparent animate-spin mx-auto mb-4" />
+          <h2 className="text-sm font-semibold text-slate-400">Loading VoiceOS AI Enterprise Workspace...</h2>
         </div>
       </div>
     );
@@ -713,138 +828,121 @@ export default function DashboardPage() {
         isSidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
       }`}>
         <div className="flex items-center gap-3 pb-6 border-b border-slate-800 mb-6">
-          <div className="bg-gradient-to-br from-violet-600 to-indigo-600 p-2 rounded-lg shadow-lg">
-            <Sparkles className="h-5 w-5 text-white" />
+          <div className={`bg-gradient-to-br ${headerGradient} p-2 rounded-lg shadow-lg`}>
+            <Sparkles className="h-5 w-5 text-white animate-pulse" />
           </div>
-          <span className="text-lg font-bold bg-gradient-to-r from-violet-400 to-indigo-400 bg-clip-text text-transparent">
-            KannadaAI Business OS
+          <span className="text-md font-extrabold tracking-tight bg-gradient-to-r from-white to-slate-300 bg-clip-text text-transparent truncate max-w-[170px]" title={brandingLogoText}>
+            {brandingLogoText}
           </span>
         </div>
 
         {/* Sidebar Nav */}
-        <nav className="flex flex-col gap-1.5 flex-grow">
+        <nav className="flex flex-col gap-1 flex-grow overflow-y-auto">
+          
           <button
-            id="nav-overview"
-            className={`flex items-center gap-3 px-4 py-2.5 text-sm font-semibold rounded-lg cursor-pointer transition-all ${
-              activeTab === "overview" ? "bg-violet-600/15 border border-violet-500/25 text-violet-400" : "text-slate-400 hover:text-slate-200 border border-transparent"
+            className={`flex items-center gap-3 px-4 py-2.5 text-xs font-semibold rounded-lg cursor-pointer transition-all ${
+              activeTab === "dashboard" ? `${glassTint} border ${borderTint} ${textTint}` : "text-slate-400 hover:text-slate-200 border border-transparent hover:bg-slate-800/50"
             }`}
-            onClick={() => { setActiveTab("overview"); setIsSidebarOpen(false); }}
+            onClick={() => { setActiveTab("dashboard"); setIsSidebarOpen(false); }}
           >
-            <BarChart2 className="h-4 w-4" />
-            Overview Panel
+            <LayoutDashboard className="h-4 w-4" />
+            Overview Dashboard
           </button>
 
           <button
-            id="nav-crm"
-            className={`flex items-center gap-3 px-4 py-2.5 text-sm font-semibold rounded-lg cursor-pointer transition-all ${
-              activeTab === "crm" ? "bg-violet-600/15 border border-violet-500/25 text-violet-400" : "text-slate-400 hover:text-slate-200 border border-transparent"
+            className={`flex items-center gap-3 px-4 py-2.5 text-xs font-semibold rounded-lg cursor-pointer transition-all ${
+              activeTab === "employees" ? `${glassTint} border ${borderTint} ${textTint}` : "text-slate-400 hover:text-slate-200 border border-transparent hover:bg-slate-800/50"
             }`}
-            onClick={() => { setActiveTab("crm"); setIsSidebarOpen(false); }}
+            onClick={() => { setActiveTab("employees"); setIsSidebarOpen(false); }}
           >
-            <Users className="h-4 w-4" />
-            CRM & qualified Leads
+            <Play className="h-4 w-4" />
+            AI Voice Employees
           </button>
 
           <button
-            id="nav-products"
-            className={`flex items-center gap-3 px-4 py-2.5 text-sm font-semibold rounded-lg cursor-pointer transition-all ${
-              activeTab === "products" ? "bg-violet-600/15 border border-violet-500/25 text-violet-400" : "text-slate-400 hover:text-slate-200 border border-transparent"
-            }`}
-            onClick={() => { setActiveTab("products"); setIsSidebarOpen(false); }}
-          >
-            <ShoppingBag className="h-4 w-4" />
-            Product Specs
-          </button>
-
-          <button
-            id="nav-services"
-            className={`flex items-center gap-3 px-4 py-2.5 text-sm font-semibold rounded-lg cursor-pointer transition-all ${
-              activeTab === "services" ? "bg-violet-600/15 border border-violet-500/25 text-violet-400" : "text-slate-400 hover:text-slate-200 border border-transparent"
-            }`}
-            onClick={() => { setActiveTab("services"); setIsSidebarOpen(false); }}
-          >
-            <Wrench className="h-4 w-4" />
-            Services catalog
-          </button>
-
-          <button
-            id="nav-kb"
-            className={`flex items-center gap-3 px-4 py-2.5 text-sm font-semibold rounded-lg cursor-pointer transition-all ${
-              activeTab === "kb" ? "bg-violet-600/15 border border-violet-500/25 text-violet-400" : "text-slate-400 hover:text-slate-200 border border-transparent"
+            className={`flex items-center gap-3 px-4 py-2.5 text-xs font-semibold rounded-lg cursor-pointer transition-all ${
+              activeTab === "kb" ? `${glassTint} border ${borderTint} ${textTint}` : "text-slate-400 hover:text-slate-200 border border-transparent hover:bg-slate-800/50"
             }`}
             onClick={() => { setActiveTab("kb"); setIsSidebarOpen(false); }}
           >
             <BookOpen className="h-4 w-4" />
-            RAG Knowledge Base
+            Knowledge Base (RAG)
           </button>
 
           <button
-            id="nav-agents"
-            className={`flex items-center gap-3 px-4 py-2.5 text-sm font-semibold rounded-lg cursor-pointer transition-all ${
-              activeTab === "agents" ? "bg-violet-600/15 border border-violet-500/25 text-violet-400" : "text-slate-400 hover:text-slate-200 border border-transparent"
+            className={`flex items-center gap-3 px-4 py-2.5 text-xs font-semibold rounded-lg cursor-pointer transition-all ${
+              activeTab === "history" ? `${glassTint} border ${borderTint} ${textTint}` : "text-slate-400 hover:text-slate-200 border border-transparent hover:bg-slate-800/50"
             }`}
-            onClick={() => { setActiveTab("agents"); setIsSidebarOpen(false); }}
+            onClick={() => { setActiveTab("history"); setIsSidebarOpen(false); }}
           >
-            <Play className="h-4 w-4" />
-            Voice Agent Config
+            <Clock className="h-4 w-4" />
+            Call History
           </button>
 
           <button
-            id="nav-billing"
-            className={`flex items-center gap-3 px-4 py-2.5 text-sm font-semibold rounded-lg cursor-pointer transition-all ${
-              activeTab === "billing" ? "bg-violet-600/15 border border-violet-500/25 text-violet-400" : "text-slate-400 hover:text-slate-200 border border-transparent"
+            className={`flex items-center gap-3 px-4 py-2.5 text-xs font-semibold rounded-lg cursor-pointer transition-all ${
+              activeTab === "leads" ? `${glassTint} border ${borderTint} ${textTint}` : "text-slate-400 hover:text-slate-200 border border-transparent hover:bg-slate-800/50"
+            }`}
+            onClick={() => { setActiveTab("leads"); setIsSidebarOpen(false); }}
+          >
+            <Users className="h-4 w-4" />
+            Leads CRM & Dialer
+          </button>
+
+          <button
+            className={`flex items-center gap-3 px-4 py-2.5 text-xs font-semibold rounded-lg cursor-pointer transition-all ${
+              activeTab === "analytics" ? `${glassTint} border ${borderTint} ${textTint}` : "text-slate-400 hover:text-slate-200 border border-transparent hover:bg-slate-800/50"
+            }`}
+            onClick={() => { setActiveTab("analytics"); setIsSidebarOpen(false); }}
+          >
+            <BarChart2 className="h-4 w-4" />
+            Analytics Console
+          </button>
+
+          <button
+            className={`flex items-center gap-3 px-4 py-2.5 text-xs font-semibold rounded-lg cursor-pointer transition-all ${
+              activeTab === "billing" ? `${glassTint} border ${borderTint} ${textTint}` : "text-slate-400 hover:text-slate-200 border border-transparent hover:bg-slate-800/50"
             }`}
             onClick={() => { setActiveTab("billing"); setIsSidebarOpen(false); }}
           >
             <CreditCard className="h-4 w-4" />
-            Plans & Razorpay
+            Subscription Billing
           </button>
 
-          {isSuperAdmin && (
-            <button
-              id="nav-admin"
-              className={`flex items-center gap-3 px-4 py-2.5 text-sm font-semibold rounded-lg cursor-pointer transition-all border border-emerald-500/10 ${
-                activeTab === "admin" ? "bg-emerald-500/10 border-emerald-500/35 text-emerald-400" : "text-emerald-500 hover:text-emerald-400 hover:bg-emerald-500/5"
-              }`}
-              onClick={() => { setActiveTab("admin"); setIsSidebarOpen(false); }}
-            >
-              <ShieldAlert className="h-4 w-4" />
-              Super Admin panel
-            </button>
-          )}
+          <button
+            className={`flex items-center gap-3 px-4 py-2.5 text-xs font-semibold rounded-lg cursor-pointer transition-all ${
+              activeTab === "settings" ? `${glassTint} border ${borderTint} ${textTint}` : "text-slate-400 hover:text-slate-200 border border-transparent hover:bg-slate-800/50"
+            }`}
+            onClick={() => { setActiveTab("settings"); setIsSidebarOpen(false); }}
+          >
+            <Settings className="h-4 w-4" />
+            General Settings
+          </button>
+
         </nav>
 
+        {/* Sidebar Footer */}
         <div className="pt-4 border-t border-slate-800/80 mt-auto">
           <button
-            id="nav-settings"
-            className="w-full flex items-center gap-3 px-4 py-2 text-sm rounded-lg cursor-pointer font-semibold transition-all mb-2 text-slate-400 hover:text-slate-200"
-            onClick={() => { router.push("/dashboard/telephony"); setIsSidebarOpen(false); }}
-          >
-            <Settings className="h-4.5 w-4.5" />
-            Telephony settings
-          </button>
-
-          <button
-            id="logout"
-            className="w-full flex items-center gap-3 px-4 py-2 text-sm text-red-400 hover:bg-red-500/5 rounded-lg cursor-pointer font-semibold transition-all"
             onClick={handleLogout}
+            className="w-full flex items-center gap-3 px-4 py-2 text-xs text-red-400 hover:bg-red-500/5 rounded-lg cursor-pointer font-semibold transition-all border border-transparent hover:border-red-500/10"
           >
             <LogOut className="h-4 w-4" />
-            Logout
+            Logout Session
           </button>
         </div>
       </aside>
 
       {/* Main Panel View */}
-      <main className="flex-grow p-4 md:p-10 overflow-y-auto max-w-7xl mx-auto w-full">
+      <main className="flex-grow p-4 md:p-8 overflow-y-auto max-w-7xl mx-auto w-full">
         
         {/* Mobile Header Bar */}
-        <div className="flex md:hidden items-center justify-between p-3.5 border border-slate-800 bg-slate-900/60 backdrop-blur-md rounded-2xl mb-6 sticky top-0 z-20">
+        <div className="flex md:hidden items-center justify-between p-3.5 border border-slate-850 bg-slate-900/80 backdrop-blur-md rounded-2xl mb-6 sticky top-0 z-20">
           <div className="flex items-center gap-2">
-            <div className="bg-gradient-to-br from-violet-600 to-indigo-600 p-1.5 rounded-lg">
+            <div className={`bg-gradient-to-br ${headerGradient} p-1.5 rounded-lg`}>
               <Sparkles className="h-4 w-4 text-white" />
             </div>
-            <span className="text-sm font-bold text-white font-display">KannadaAI OS</span>
+            <span className="text-sm font-bold text-white">{brandingLogoText}</span>
           </div>
           <button 
             type="button"
@@ -855,131 +953,146 @@ export default function DashboardPage() {
           </button>
         </div>
         
-        {/* Header bar */}
-        <header className="flex justify-between items-center mb-8 pb-4 border-b border-slate-900">
+        {/* Workspace Title & Stats Badge */}
+        <header className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-8 pb-4 border-b border-slate-900">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-white capitalize">
-              {activeTab === "overview" && "SaaS Overview Analytics"}
-              {activeTab === "crm" && "Workspace CRM & leads panel"}
-              {activeTab === "products" && "Product Catalog details"}
-              {activeTab === "services" && "Service specifications"}
+            <h1 className="text-xl md:text-2xl font-black tracking-tight text-white capitalize">
+              {activeTab === "dashboard" && "Workspace Activity Dashboard"}
+              {activeTab === "employees" && "AI Voice Employees Pool"}
               {activeTab === "kb" && "Retrieval-Augmented Generation (RAG)"}
-              {activeTab === "agents" && "Deploy KannadaAI Business OS Voice Agents"}
-              {activeTab === "billing" && "Workspace plans & payments"}
-              {activeTab === "admin" && "Super Admin Central Command"}
-              {activeTab === "settings" && "Telephony Gateway Credentials"}
+              {activeTab === "history" && "Voice Call Conversations Logs"}
+              {activeTab === "leads" && "Leads CRM & Simulator Dialer"}
+              {activeTab === "analytics" && "Analytics & CSAT Console"}
+              {activeTab === "billing" && "Workspace Plan & Razorpay Checkout"}
+              {activeTab === "settings" && "General Workspace Settings"}
             </h1>
             <p className="text-xs text-slate-400 mt-1">
-              Business Workspace: <strong className="text-violet-400">{business?.business_name}</strong> | Category: <strong>{business?.category}</strong>
+              Active Workspace: <strong className="text-white">{business?.business_name}</strong> | Category: <strong className="text-slate-300">{business?.category}</strong> | Timezone: <strong className="text-indigo-400">{timezone}</strong>
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
-            <span className="badge badge-primary bg-violet-600/10 border border-violet-500/20 text-violet-400 px-3 py-1.5 rounded-full text-xs font-semibold">
-              Plan: <span className="uppercase text-white ml-1">{subscription?.plan}</span>
+          <div className="flex items-center gap-3 self-start md:self-center">
+            <span className={`badge bg-slate-900 border border-slate-800 text-slate-300 px-3 py-1.5 rounded-full text-xs font-semibold`}>
+              Billing Plan: <span className={`uppercase font-extrabold ml-1 ${textTint}`}>{subscription?.plan || "Starter"}</span>
             </span>
-            {session?.isSandbox ? (
-              <span className="badge bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 px-3 py-1.5 rounded-full text-xs font-semibold flex items-center">
-                <span className="pulsing-indicator active mr-2" />
-                Sandbox Active
-              </span>
-            ) : (
-              <span className="badge bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 px-3 py-1.5 rounded-full text-xs font-semibold flex items-center">
-                Live Production
-              </span>
-            )}
+            <span className="badge bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 px-3 py-1.5 rounded-full text-xs font-semibold flex items-center">
+              <span className="pulsing-indicator active mr-2" />
+              Live Workspace Active
+            </span>
           </div>
         </header>
 
-        {/* -------------------- VIEW: OVERVIEW -------------------- */}
-        {activeTab === "overview" && (
-          <section id="tab-overview" className="space-y-8">
+        {/* -------------------- VIEW: DASHBOARD OVERVIEW -------------------- */}
+        {activeTab === "dashboard" && (
+          <section className="space-y-6">
             
             {/* Metric grid */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
               
-              <div className="glass-panel rounded-2xl p-6 relative overflow-hidden before:content-[''] before:absolute before:top-0 before:left-0 before:w-full before:height-[3px] before:bg-violet-600">
-                <div className="flex justify-between items-center text-slate-400 mb-2">
-                  <span className="text-xs font-semibold uppercase tracking-wider">Total Voice Calls</span>
-                  <Phone className="h-5 w-5 text-violet-500" />
+              <div className="bg-slate-900/60 backdrop-blur-md border border-slate-800/80 rounded-2xl p-5 relative overflow-hidden before:content-[''] before:absolute before:top-0 before:left-0 before:w-full before:h-[3px] before:bg-violet-600">
+                <div className="flex justify-between items-center text-slate-400 mb-1">
+                  <span className="text-[10px] font-bold uppercase tracking-wider">Total Calls</span>
+                  <Phone className="h-4.5 w-4.5 text-violet-500" />
                 </div>
-                <div className="text-3xl font-extrabold text-white">{totalCallsCount}</div>
-                <div className="text-[10px] text-slate-500 mt-2">Active calls & playground testing logs</div>
+                <div className="text-2xl font-black text-white">{totalCallsCount}</div>
+                <div className="text-[9px] text-slate-500 mt-1">Simulated & active campaigns</div>
               </div>
 
-              <div className="glass-panel rounded-2xl p-6 relative overflow-hidden before:content-[''] before:absolute before:top-0 before:left-0 before:w-full before:height-[3px] before:bg-violet-600">
-                <div className="flex justify-between items-center text-slate-400 mb-2">
-                  <span className="text-xs font-semibold uppercase tracking-wider">Avg Call Duration</span>
-                  <Clock className="h-5 w-5 text-amber-500" />
+              <div className="bg-slate-900/60 backdrop-blur-md border border-slate-800/80 rounded-2xl p-5 relative overflow-hidden before:content-[''] before:absolute before:top-0 before:left-0 before:w-full before:h-[3px] before:bg-indigo-500">
+                <div className="flex justify-between items-center text-slate-400 mb-1">
+                  <span className="text-[10px] font-bold uppercase tracking-wider">Avg Duration</span>
+                  <Clock className="h-4.5 w-4.5 text-indigo-500" />
                 </div>
-                <div className="text-3xl font-extrabold text-white">{avgDuration}s</div>
-                <div className="text-[10px] text-slate-500 mt-2">Conversational speed benchmark</div>
+                <div className="text-2xl font-black text-white">{avgDuration}s</div>
+                <div className="text-[9px] text-slate-500 mt-1">Conversational speed average</div>
               </div>
 
-              <div className="glass-panel rounded-2xl p-6 relative overflow-hidden before:content-[''] before:absolute before:top-0 before:left-0 before:w-full before:height-[3px] before:bg-violet-600">
-                <div className="flex justify-between items-center text-slate-400 mb-2">
-                  <span className="text-xs font-semibold uppercase tracking-wider">CRM qualified Leads</span>
-                  <UserCheck className="h-5 w-5 text-emerald-500" />
+              <div className="bg-slate-900/60 backdrop-blur-md border border-slate-800/80 rounded-2xl p-5 relative overflow-hidden before:content-[''] before:absolute before:top-0 before:left-0 before:w-full before:h-[3px] before:bg-emerald-500">
+                <div className="flex justify-between items-center text-slate-400 mb-1">
+                  <span className="text-[10px] font-bold uppercase tracking-wider">CRM Leads</span>
+                  <UserCheck className="h-4.5 w-4.5 text-emerald-500" />
                 </div>
-                <div className="text-3xl font-extrabold text-white">{totalLeadsCount}</div>
-                <div className="text-[10px] text-slate-500 mt-2">Leads extracted dynamically from transcripts</div>
+                <div className="text-2xl font-black text-white">{totalLeadsCount}</div>
+                <div className="text-[9px] text-slate-500 mt-1">Extracted phone contacts</div>
               </div>
 
-              <div className="glass-panel rounded-2xl p-6 relative overflow-hidden before:content-[''] before:absolute before:top-0 before:left-0 before:w-full before:height-[3px] before:bg-violet-600">
-                <div className="flex justify-between items-center text-slate-400 mb-2">
-                  <span className="text-xs font-semibold uppercase tracking-wider">Customer CSAT</span>
-                  <Award className="h-5 w-5 text-indigo-500" />
+              <div className="bg-slate-900/60 backdrop-blur-md border border-slate-800/80 rounded-2xl p-5 relative overflow-hidden before:content-[''] before:absolute before:top-0 before:left-0 before:w-full before:h-[3px] before:bg-amber-500">
+                <div className="flex justify-between items-center text-slate-400 mb-1">
+                  <span className="text-[10px] font-bold uppercase tracking-wider">CSAT Score</span>
+                  <Award className="h-4.5 w-4.5 text-amber-500" />
                 </div>
-                <div className="text-3xl font-extrabold text-white">{csatScore}/5.0</div>
-                <div className="text-[10px] text-slate-500 mt-2">Aggregated customer call sentiment score</div>
+                <div className="text-2xl font-black text-white">{csatScore}/5.0</div>
+                <div className="text-[9px] text-slate-500 mt-1">Sentiment customer feedback</div>
+              </div>
+
+              <div className="bg-slate-900/60 backdrop-blur-md border border-slate-800/80 rounded-2xl p-5 relative overflow-hidden before:content-[''] before:absolute before:top-0 before:left-0 before:w-full before:h-[3px] before:bg-purple-500">
+                <div className="flex justify-between items-center text-slate-400 mb-1">
+                  <span className="text-[10px] font-bold uppercase tracking-wider">Conversion</span>
+                  <BarChart2 className="h-4.5 w-4.5 text-purple-500" />
+                </div>
+                <div className="text-2xl font-black text-white">{conversionRate}%</div>
+                <div className="text-[9px] text-slate-500 mt-1">Lead acquisition ratio</div>
+              </div>
+
+              <div className="bg-slate-900/60 backdrop-blur-md border border-slate-800/80 rounded-2xl p-5 relative overflow-hidden before:content-[''] before:absolute before:top-0 before:left-0 before:w-full before:h-[3px] before:bg-pink-500">
+                <div className="flex justify-between items-center text-slate-400 mb-1">
+                  <span className="text-[10px] font-bold uppercase tracking-wider">AI Employees</span>
+                  <Sparkles className="h-4.5 w-4.5 text-pink-500" />
+                </div>
+                <div className="text-2xl font-black text-white">{agents.length}</div>
+                <div className="text-[9px] text-slate-500 mt-1">Deployed vocal bots</div>
               </div>
 
             </div>
 
-            {/* Calling gateway analytics grid summary */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Quick Analytics timeline grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               
-              {/* Telephony metrics */}
-              <div className="glass-panel rounded-2xl p-6 flex flex-col justify-between">
-                <h3 className="text-sm font-bold text-slate-300 mb-4">Telephony Gateway Logs</h3>
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center text-xs">
-                    <span className="flex items-center gap-2"><PhoneIncoming className="h-4 w-4 text-emerald-400" /> Inbound Calls</span>
-                    <strong className="text-white">6</strong>
-                  </div>
-                  <div className="flex justify-between items-center text-xs">
-                    <span className="flex items-center gap-2"><PhoneOutgoing className="h-4 w-4 text-indigo-400" /> Outbound Calls</span>
-                    <strong className="text-white">{totalCallsCount}</strong>
-                  </div>
-                  <div className="flex justify-between items-center text-xs">
-                    <span className="flex items-center gap-2"><PhoneMissed className="h-4 w-4 text-red-400" /> Missed Calls</span>
-                    <strong className="text-white">0</strong>
+              <div className="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-6 flex flex-col justify-between">
+                <div>
+                  <h3 className="text-sm font-bold text-slate-200 mb-4 flex items-center gap-2">
+                    <Volume2 className={`h-4 w-4 ${textTint}`} />
+                    Voice Channels Active
+                  </h3>
+                  <div className="space-y-3.5">
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="flex items-center gap-2 text-slate-400"><PhoneIncoming className="h-4 w-4 text-emerald-400" /> Inbound Calls routing</span>
+                      <strong className="text-white font-mono">14</strong>
+                    </div>
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="flex items-center gap-2 text-slate-400"><PhoneOutgoing className="h-4 w-4 text-indigo-400" /> Outbound campaigns dials</span>
+                      <strong className="text-white font-mono">{totalCallsCount}</strong>
+                    </div>
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="flex items-center gap-2 text-slate-400"><Calendar className="h-4 w-4 text-violet-400" /> Demos scheduled</span>
+                      <strong className="text-white font-mono">{totalAppsCount}</strong>
+                    </div>
                   </div>
                 </div>
                 <div className="border-t border-slate-800 pt-4 mt-6 text-[10px] text-slate-500">
-                  Real-time Twilio & Exotel active lines log
+                  Real-time visual telemetry syncing
                 </div>
               </div>
 
-              {/* Weekly Call Volume Analytics Chart */}
-              <div className="glass-panel rounded-2xl p-6 md:col-span-2">
-                <h3 className="text-sm font-bold mb-4 flex items-center gap-2">
-                  <BarChart2 className="h-4 w-4 text-violet-500" />
-                  Weekly Call Volume Analytics
+              {/* Weekly volume bar visualizer */}
+              <div className="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-6 lg:col-span-2">
+                <h3 className="text-sm font-bold text-slate-200 mb-4 flex items-center gap-2">
+                  <BarChart2 className={`h-4 w-4 ${textTint}`} />
+                  Weekly Call Traffic Volume
                 </h3>
-                <div className="flex items-end justify-between h-36 px-4 border-b border-slate-850">
+                <div className="flex items-end justify-between h-32 px-4 border-b border-slate-800/60">
                   {[
                     { day: "Mon", count: 4, height: "h-[30px]" },
                     { day: "Tue", count: 8, height: "h-[60px]" },
                     { day: "Wed", count: 12, height: "h-[90px]" },
                     { day: "Thu", count: 6, height: "h-[45px]" },
-                    { day: "Fri", count: 15, height: "h-[110px]" },
+                    { day: "Fri", count: 16, height: "h-[110px]" },
                     { day: "Sat", count: 9, height: "h-[65px]" },
                     { day: "Sun", count: 2, height: "h-[15px]" }
                   ].map((item, idx) => (
-                    <div key={idx} className="flex flex-col items-center gap-1 w-10">
-                      <div className="text-[9px] text-slate-400 font-bold">{item.count}</div>
-                      <div className={`w-5 ${item.height} bg-gradient-to-t from-violet-600 to-indigo-500 rounded-t`} />
+                    <div key={idx} className="flex flex-col items-center gap-1.5 w-10">
+                      <div className="text-[10px] text-slate-300 font-bold">{item.count}</div>
+                      <div className={`w-5 ${item.height} bg-gradient-to-t ${headerGradient} rounded-t transition-all duration-500`} />
                       <span className="text-[10px] text-slate-500 mt-1 font-semibold">{item.day}</span>
                     </div>
                   ))}
@@ -988,50 +1101,50 @@ export default function DashboardPage() {
 
             </div>
 
-            {/* Recent conversation logs */}
-            <div className="glass-panel rounded-2xl p-6">
+            {/* Recent Conversations */}
+            <div className="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-6">
               <div className="flex justify-between items-center mb-6">
-                <h3 className="text-base font-bold">Recent Live Calls Log</h3>
-                <span className="text-xs text-slate-500">Real-time transcripts cataloged</span>
+                <h3 className="text-sm font-bold text-slate-200">Recent Customer Voice Conversations</h3>
+                <span className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">Synchronized Logs</span>
               </div>
               <div className="overflow-x-auto">
-                <table className="custom-table">
+                <table className="custom-table w-full">
                   <thead>
                     <tr>
-                      <th>Customer Name</th>
-                      <th>Duration</th>
-                      <th>Sentiment</th>
-                      <th>Outcome / Summary</th>
-                      <th>Date / Time</th>
-                      <th>Actions</th>
+                      <th className="text-left py-3 px-4 text-xs font-semibold text-slate-400">Customer</th>
+                      <th className="text-left py-3 px-4 text-xs font-semibold text-slate-400">Duration</th>
+                      <th className="text-left py-3 px-4 text-xs font-semibold text-slate-400">Sentiment</th>
+                      <th className="text-left py-3 px-4 text-xs font-semibold text-slate-400">Key Outcome Summary</th>
+                      <th className="text-left py-3 px-4 text-xs font-semibold text-slate-400">Timestamp</th>
+                      <th className="text-left py-3 px-4 text-xs font-semibold text-slate-400">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {calls.length === 0 ? (
                       <tr>
-                        <td colSpan={6} className="text-center text-slate-500 py-8">
-                          No voice conversations captured yet. Open the Playground to simulate user calls!
+                        <td colSpan={6} className="text-center text-slate-500 py-12 text-xs">
+                          No conversation logs captured yet. Go to Leads CRM and dial a lead to record call history!
                         </td>
                       </tr>
                     ) : (
-                      calls.map((c) => (
-                        <tr key={c.id}>
-                          <td className="font-semibold text-white">{c.customer_name}</td>
-                          <td>{c.duration_seconds}s</td>
-                          <td>
-                            <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase border ${
+                      calls.slice(0, 5).map((c) => (
+                        <tr key={c.id} className="border-b border-slate-800/40 hover:bg-slate-800/10">
+                          <td className="py-3 px-4 text-xs font-bold text-white">{c.customer_name}</td>
+                          <td className="py-3 px-4 text-xs font-mono text-slate-300">{c.duration_seconds}s</td>
+                          <td className="py-3 px-4 text-xs">
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase border ${
                               c.sentiment === "positive" ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400" :
                               c.sentiment === "frustrated" ? "bg-red-500/10 border-red-500/20 text-red-400" :
                               "bg-slate-500/10 border-slate-500/20 text-slate-400"
                             }`}>
-                              {c.sentiment}
+                              {c.sentiment || "neutral"}
                             </span>
                           </td>
-                          <td className="max-w-xs truncate text-slate-300">{c.summary || "Call completed naturally."}</td>
-                          <td className="text-xs text-slate-400">{new Date(c.created_at).toLocaleString("en-IN")}</td>
-                          <td>
+                          <td className="py-3 px-4 text-xs max-w-xs truncate text-slate-400">{c.summary || "Call completed naturally."}</td>
+                          <td className="py-3 px-4 text-xs text-slate-500">{new Date(c.created_at).toLocaleString("en-IN")}</td>
+                          <td className="py-3 px-4 text-xs">
                             <button
-                              className="px-3 py-1 bg-slate-900 border border-slate-800 hover:bg-slate-850 hover:text-white rounded-lg text-xs font-semibold transition-all"
+                              className="px-2.5 py-1.5 bg-slate-950 border border-slate-800 hover:bg-slate-850 text-[10px] font-bold text-white rounded-lg transition-all cursor-pointer"
                               onClick={() => openCallLogs(c)}
                             >
                               Open Transcript
@@ -1048,381 +1161,159 @@ export default function DashboardPage() {
           </section>
         )}
 
-        {/* -------------------- VIEW: CRM & LEADS -------------------- */}
-        {activeTab === "crm" && (
-          <section id="tab-crm" className="space-y-8">
+        {/* -------------------- VIEW: AI EMPLOYEES CONFIG -------------------- */}
+        {activeTab === "employees" && (
+          <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             
-            {/* Qualified leads dashboard */}
-            <div className="glass-panel rounded-2xl p-6">
-              <h3 className="text-base font-bold mb-4">Qualified Sales Leads (Dynamic CRM Extraction)</h3>
-              <p className="text-xs text-slate-400 mb-6">
-                The AI Voice Agent extracts contact credentials, budgets, requirements, and callback preferences dynamically during user calls. Click the Phone icon to dial customer using active gateway or sandbox simulator.
-              </p>
-              
-              <div className="overflow-x-auto">
-                <table className="custom-table">
-                  <thead>
-                    <tr>
-                      <th>Name</th>
-                      <th>Phone</th>
-                      <th>City</th>
-                      <th>Budget</th>
-                      <th>Callback Window</th>
-                      <th>Intent requirements</th>
-                      <th>Lead Score</th>
-                      <th>Call Action</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {customers.filter(c => c.is_lead).length === 0 ? (
-                      <tr>
-                        <td colSpan={8} className="text-center text-slate-500 py-8">
-                          No leads generated. Test the voice bot using product/pricing queries to log a qualified lead.
-                        </td>
-                      </tr>
-                    ) : (
-                      customers.filter(c => c.is_lead).map((lead) => (
-                        <tr key={lead.id}>
-                          <td className="font-semibold text-white">{lead.name}</td>
-                          <td className="text-slate-300 font-mono text-xs">{lead.phone}</td>
-                          <td>{lead.city}</td>
-                          <td className="text-violet-400 font-semibold">₹{lead.budget}</td>
-                          <td className="text-xs text-slate-400">{lead.callback_time}</td>
-                          <td className="max-w-xs truncate">{lead.requirements}</td>
-                          <td>
-                            <div className="flex items-center gap-2">
-                              <div className="w-16 bg-slate-800 h-2 rounded-full overflow-hidden">
-                                <div 
-                                  className={`h-full ${
-                                    lead.lead_score >= 80 ? "bg-emerald-500" :
-                                    lead.lead_score >= 50 ? "bg-amber-500" : "bg-red-500"
-                                  }`}
-                                  style={{ width: `${lead.lead_score}%` }}
-                                />
-                              </div>
-                              <span className="text-xs font-bold font-mono">{lead.lead_score}</span>
-                            </div>
-                          </td>
-                          <td>
-                            <button
-                              id={`dial-lead-${lead.id}`}
-                              className="p-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 rounded-lg cursor-pointer transition-all active:scale-95"
-                              onClick={() => handleCallLead(lead)}
-                              title="Call Lead"
-                            >
-                              <PhoneCall className="h-3.5 w-3.5" />
-                            </button>
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            {/* Support Tickets Board */}
-            <div className="glass-panel rounded-2xl p-6">
-              <h3 className="text-base font-bold mb-6">Active Customer Service Support Tickets</h3>
-              <div className="overflow-x-auto">
-                <table className="custom-table">
-                  <thead>
-                    <tr>
-                      <th>Subject</th>
-                      <th>Priority</th>
-                      <th>Issue Description</th>
-                      <th>Status</th>
-                      <th>Action</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {tickets.length === 0 ? (
-                      <tr>
-                        <td colSpan={5} className="text-center text-slate-500 py-8">
-                          No tickets created. Refund/Defect statements in calls automatically create tickets.
-                        </td>
-                      </tr>
-                    ) : (
-                      tickets.map((tkt) => (
-                        <tr key={tkt.id}>
-                          <td className="font-semibold text-white">{tkt.subject}</td>
-                          <td>
-                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
-                              tkt.priority === "high" ? "bg-red-500/10 text-red-400 border border-red-500/20" :
-                              tkt.priority === "medium" ? "bg-amber-500/10 text-amber-400 border border-amber-500/20" :
-                              "bg-slate-500/10 text-slate-400 border border-slate-500/20"
-                            }`}>
-                              {tkt.priority}
-                            </span>
-                          </td>
-                          <td className="max-w-xs truncate text-slate-300">{tkt.issue_description}</td>
-                          <td>
-                            <span className={`badge ${tkt.status === "resolved" ? "badge-success bg-emerald-500/10 border-emerald-500/20 text-emerald-400" : "badge-danger bg-red-500/10 border-red-500/20 text-red-400"} px-2 py-0.5 rounded text-[10px] font-bold uppercase`}>
-                              {tkt.status}
-                            </span>
-                          </td>
-                          <td>
-                            <button
-                              className="px-3 py-1 bg-slate-900 border border-slate-800 hover:bg-slate-800 rounded-lg text-xs font-semibold transition-all"
-                              onClick={() => toggleTicketStatus(tkt.id, tkt.status)}
-                            >
-                              Toggle Status
-                            </button>
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            {/* Scheduled Appointments calendar slot tracker */}
-            <div className="glass-panel rounded-2xl p-6">
-              <h3 className="text-base font-bold mb-6">Upcoming Demo Appointments (Calendar integrations)</h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {appointments.length === 0 ? (
-                  <div className="col-span-3 text-center text-slate-500 py-8">
-                    No appointments scheduled.
-                  </div>
-                ) : (
-                  appointments.map((app) => (
-                    <div key={app.id} className="bg-slate-900/80 border border-slate-800 p-4 rounded-xl flex flex-col justify-between">
+            {/* List Active Voice Employees */}
+            <div className="lg:col-span-2 space-y-4">
+              <h3 className="text-sm font-bold text-slate-200 mb-2">Deployed Voice Employees ({agents.length})</h3>
+              {agents.length === 0 ? (
+                <div className="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-12 text-center text-slate-500 text-xs">
+                  No Voice Employees deployed yet. Fill the wizard on the right to deploy your first AI Voice employee!
+                </div>
+              ) : (
+                agents.map((ag) => (
+                  <div key={ag.id} className="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-5 space-y-4 hover:border-slate-700/60 transition-all">
+                    
+                    <div className="flex justify-between items-start">
                       <div>
-                        <div className="flex justify-between items-start mb-2">
-                          <span className="text-xs font-bold text-violet-400">{app.time}</span>
-                          <span className="text-[10px] bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded font-bold uppercase">
-                            {app.status}
-                          </span>
+                        <div className="flex items-center gap-2">
+                          <div className={`p-1.5 rounded bg-gradient-to-br ${headerGradient} text-white`}>
+                            <Volume2 className="h-4 w-4" />
+                          </div>
+                          <h4 className="text-sm font-bold text-white">{ag.name}</h4>
+                          <span className="text-[10px] bg-slate-800 px-2 py-0.5 rounded text-slate-400 font-bold uppercase">{ag.personality}</span>
                         </div>
-                        <h4 className="text-sm font-bold text-white mb-2">Home Demo Call</h4>
-                        <p className="text-xs text-slate-400 leading-normal italic">
-                          "{app.notes}"
+                        <p className="text-[10px] text-slate-400 mt-2">
+                          Language Accent: <strong className="text-indigo-400">{ag.language}</strong> | Voice: <strong className="text-slate-300 font-mono text-[9px]">{ag.voice_provider} ({ag.voice_id})</strong>
                         </p>
                       </div>
-                      <div className="border-t border-slate-800 pt-3 mt-4 text-[10px] text-slate-500 font-semibold">
-                        Scheduled Date: {app.date}
+
+                      <div className="flex gap-2">
+                        <button
+                          className="px-2.5 py-1.5 bg-slate-950 border border-slate-800 hover:bg-slate-850 hover:text-white rounded-lg text-[10px] font-bold cursor-pointer transition-all"
+                          onClick={() => startEditAgent(ag)}
+                        >
+                          Configure
+                        </button>
+                        <button
+                          className="p-1.5 bg-red-950/20 hover:bg-red-950/40 border border-red-500/10 hover:border-red-500/30 text-red-400 rounded-lg cursor-pointer transition-all"
+                          onClick={() => handleDeleteAgent(ag.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
                       </div>
                     </div>
-                  ))
-                )}
-              </div>
-            </div>
 
-          </section>
-        )}
-
-        {/* -------------------- VIEW: PRODUCTS -------------------- */}
-        {activeTab === "products" && (
-          <section id="tab-products" className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            
-            {/* List Catalog */}
-            <div className="md:col-span-2 space-y-4">
-              <h3 className="text-base font-bold mb-2">Workspace Products Catalog</h3>
-              {productsState.length === 0 ? (
-                <div className="glass-panel rounded-2xl p-8 text-center text-slate-500">
-                  No products added yet.
-                </div>
-              ) : (
-                productsState.map((prod) => (
-                  <div key={prod.id} className="glass-panel rounded-2xl p-5 flex justify-between items-start">
-                    <div className="space-y-2">
-                      <h4 className="text-md font-bold text-white">{prod.name}</h4>
-                      <p className="text-xs text-slate-400 leading-relaxed max-w-xl">{prod.description}</p>
-                      <div className="flex gap-4 text-xs font-medium text-slate-400">
-                        <span>Price: <strong className="text-violet-400">₹{prod.price}</strong></span>
-                        <span>Warranty: <strong>{prod.warranty}</strong></span>
-                        <span>Delivery: <strong>{prod.delivery_info}</strong></span>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-[11px] pt-2 border-t border-slate-800/40">
+                      <div className="bg-slate-950/50 p-3 rounded-lg border border-slate-850">
+                        <span className="font-bold text-slate-500 block mb-1 text-[9px] uppercase tracking-wider">Greeting message</span>
+                        <p className="text-slate-300 italic">"{ag.greeting_message}"</p>
+                      </div>
+                      <div className="bg-slate-950/50 p-3 rounded-lg border border-slate-850">
+                        <span className="font-bold text-slate-500 block mb-1 text-[9px] uppercase tracking-wider">RAG Instruction details</span>
+                        <p className="text-slate-300 line-clamp-2 leading-relaxed">"{ag.system_prompt}"</p>
                       </div>
                     </div>
-                    <button
-                      className="text-red-400 hover:text-red-300 p-2"
-                      onClick={() => handleDeleteProduct(prod.id)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
+
                   </div>
                 ))
               )}
             </div>
 
-            {/* Add Product Form */}
-            <div className="glass-panel rounded-2xl p-6 h-fit">
-              <h3 className="text-base font-bold mb-4">Add Product details</h3>
-              <form onSubmit={handleAddProduct} className="space-y-4">
+            {/* Right Form: Deploy Voice Employee */}
+            <div className="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-6 h-fit">
+              <h3 className="text-sm font-bold text-slate-200 mb-4 flex items-center gap-2">
+                <Plus className={`h-4 w-4 ${textTint}`} />
+                Deploy AI Employee
+              </h3>
+              
+              <form onSubmit={handleCreateAgent} className="space-y-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-400 mb-1.5">Product Name</label>
+                  <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1.5">Employee Name</label>
                   <input
-                    id="new-product-name"
                     type="text"
                     required
-                    className="w-full bg-slate-900 border border-slate-800 focus:border-violet-500 rounded-lg p-2.5 text-xs text-slate-200 focus:outline-none"
-                    placeholder="e.g. SmartMop Pro"
-                    value={newProdName}
-                    onChange={(e) => setNewProdName(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 rounded-lg p-2.5 text-xs text-slate-200 focus:outline-none"
+                    placeholder="e.g. Sharada (ಶಾರದಾ)"
+                    value={newAgentName}
+                    onChange={(e) => setNewAgentName(e.target.value)}
                   />
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-semibold text-slate-400 mb-1.5">Price (₹)</label>
-                    <input
-                      id="new-product-price"
-                      type="number"
-                      required
-                      className="w-full bg-slate-900 border border-slate-800 focus:border-violet-500 rounded-lg p-2.5 text-xs text-slate-200 focus:outline-none"
-                      value={newProdPrice}
-                      onChange={(e) => setNewProdPrice(Number(e.target.value))}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-400 mb-1.5">Warranty</label>
-                    <input
-                      id="new-product-warranty"
-                      type="text"
-                      className="w-full bg-slate-900 border border-slate-800 focus:border-violet-500 rounded-lg p-2.5 text-xs text-slate-200 focus:outline-none"
-                      placeholder="e.g. 1 Year"
-                      value={newProdWarranty}
-                      onChange={(e) => setNewProdWarranty(e.target.value)}
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-400 mb-1.5">Delivery Time</label>
-                  <input
-                    id="new-product-delivery"
-                    type="text"
-                    className="w-full bg-slate-900 border border-slate-800 focus:border-violet-500 rounded-lg p-2.5 text-xs text-slate-200 focus:outline-none"
-                    placeholder="e.g. Ships in 2 days"
-                    value={newProdDelivery}
-                    onChange={(e) => setNewProdDelivery(e.target.value)}
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-400 mb-1.5">Product Description (for AI RAG training)</label>
-                  <textarea
-                    id="new-product-desc"
-                    required
-                    rows={4}
-                    className="w-full bg-slate-900 border border-slate-800 focus:border-violet-500 rounded-lg p-2.5 text-xs text-slate-200 focus:outline-none"
-                    placeholder="Provide details about specs, battery capacity, motor power, return policy, and benefits..."
-                    value={newProdDesc}
-                    onChange={(e) => setNewProdDesc(e.target.value)}
-                  />
-                </div>
-
-                <button
-                  id="submit-new-product"
-                  type="submit"
-                  className="w-full flex items-center justify-center gap-2 py-2.5 bg-violet-600 hover:bg-violet-500 text-xs font-bold rounded-lg cursor-pointer"
-                >
-                  <Plus className="h-4 w-4" />
-                  Save Product details
-                </button>
-              </form>
-            </div>
-
-          </section>
-        )}
-
-        {/* -------------------- VIEW: SERVICES -------------------- */}
-        {activeTab === "services" && (
-          <section id="tab-services" className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            
-            {/* Services catalog list */}
-            <div className="md:col-span-2 space-y-4">
-              <h3 className="text-base font-bold mb-2">Active Services List</h3>
-              {servicesState.length === 0 ? (
-                <div className="glass-panel rounded-2xl p-8 text-center text-slate-500">
-                  No services added yet.
-                </div>
-              ) : (
-                servicesState.map((serv) => (
-                  <div key={serv.id} className="glass-panel rounded-2xl p-5 flex justify-between items-start">
-                    <div className="space-y-2">
-                      <h4 className="text-md font-bold text-white">{serv.name}</h4>
-                      <p className="text-xs text-slate-400 leading-relaxed max-w-xl">{serv.description}</p>
-                      <div className="flex gap-4 text-xs font-medium text-slate-400">
-                        <span>Pricing: <strong className="text-violet-400">{serv.pricing}</strong></span>
-                        <span>Coverage: <strong>{serv.coverage_area}</strong></span>
-                      </div>
-                    </div>
-                    <button
-                      className="text-red-400 hover:text-red-300 p-2"
-                      onClick={() => handleDeleteService(serv.id)}
+                    <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1.5">Language</label>
+                    <select
+                      className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 rounded-lg p-2 text-xs text-slate-300 focus:outline-none"
+                      value={newAgentLang}
+                      onChange={(e) => setNewAgentLang(e.target.value)}
                     >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
+                      <option value="Kannada">Kannada (ಕನ್ನಡ)</option>
+                      <option value="Telugu">Telugu (ತೆಲುಗು)</option>
+                      <option value="Hindi">Hindi (ಹಿಂದಿ)</option>
+                      <option value="English">English</option>
+                      <option value="Tamil">Tamil (ತಮಿಳು)</option>
+                      <option value="Malayalam">Malayalam</option>
+                    </select>
                   </div>
-                ))
-              )}
-            </div>
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1.5">Voice Accent</label>
+                    <select
+                      className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 rounded-lg p-2 text-xs text-slate-300 focus:outline-none"
+                      value={newAgentVoice}
+                      onChange={(e) => setNewAgentVoice(e.target.value)}
+                    >
+                      <option value="native">Browser Vocal TTS</option>
+                      <option value="elevenlabs">ElevenLabs Custom</option>
+                      <option value="openai">OpenAI Realtime</option>
+                    </select>
+                  </div>
+                </div>
 
-            {/* Add Service form */}
-            <div className="glass-panel rounded-2xl p-6 h-fit">
-              <h3 className="text-base font-bold mb-4">Register Service</h3>
-              <form onSubmit={handleAddService} className="space-y-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-400 mb-1.5">Service Name</label>
+                  <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1.5">Objective / Role</label>
+                  <select
+                    className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 rounded-lg p-2.5 text-xs text-slate-300 focus:outline-none"
+                    value={newAgentRole}
+                    onChange={(e) => setNewAgentRole(e.target.value)}
+                  >
+                    <option value="Sales Representative">Sales Representative</option>
+                    <option value="Customer Support Agent">Customer Support Agent</option>
+                    <option value="Appointment Booker">Appointment Booker</option>
+                    <option value="Feedback Surveyor">Feedback Surveyor</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1.5">Custom Greeting Message</label>
                   <input
-                    id="new-service-name"
                     type="text"
-                    required
-                    className="w-full bg-slate-900 border border-slate-800 focus:border-violet-500 rounded-lg p-2.5 text-xs text-slate-200 focus:outline-none"
-                    placeholder="e.g. Deep Cleaning / Repair"
-                    value={newServName}
-                    onChange={(e) => setNewServName(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 rounded-lg p-2.5 text-xs text-slate-200 focus:outline-none"
+                    placeholder="Leave blank for automatic greeting phrase..."
+                    value={newAgentGreet}
+                    onChange={(e) => setNewAgentGreet(e.target.value)}
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-400 mb-1.5">Pricing Details</label>
-                    <input
-                      id="new-service-price"
-                      type="text"
-                      required
-                      className="w-full bg-slate-900 border border-slate-800 focus:border-violet-500 rounded-lg p-2.5 text-xs text-slate-200 focus:outline-none"
-                      placeholder="e.g. ₹1500 visit"
-                      value={newServPrice}
-                      onChange={(e) => setNewServPrice(e.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-400 mb-1.5">Coverage Area</label>
-                    <input
-                      id="new-service-coverage"
-                      type="text"
-                      className="w-full bg-slate-900 border border-slate-800 focus:border-violet-500 rounded-lg p-2.5 text-xs text-slate-200 focus:outline-none"
-                      placeholder="e.g. Bengaluru"
-                      value={newServCoverage}
-                      onChange={(e) => setNewServCoverage(e.target.value)}
-                    />
-                  </div>
-                </div>
-
                 <div>
-                  <label className="block text-xs font-semibold text-slate-400 mb-1.5">Service Description (for AI training)</label>
+                  <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1.5">Persona Instructions (RAG Prompt)</label>
                   <textarea
-                    id="new-service-desc"
                     required
                     rows={4}
-                    className="w-full bg-slate-900 border border-slate-800 focus:border-violet-500 rounded-lg p-2.5 text-xs text-slate-200 focus:outline-none"
-                    placeholder="Explain duration, terms & conditions, and service process..."
-                    value={newServDesc}
-                    onChange={(e) => setNewServDesc(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 rounded-lg p-2.5 text-xs text-slate-200 focus:outline-none"
+                    placeholder="Provide details about business hours, product details to quote, and lead qualifying budget rules..."
+                    value={newAgentPrompt}
+                    onChange={(e) => setNewAgentPrompt(e.target.value)}
                   />
                 </div>
 
                 <button
-                  id="submit-new-service"
                   type="submit"
-                  className="w-full flex items-center justify-center gap-2 py-2.5 bg-violet-600 hover:bg-violet-500 text-xs font-bold rounded-lg cursor-pointer"
+                  className={`w-full py-2.5 bg-gradient-to-r ${buttonBg} text-white text-xs font-bold rounded-lg cursor-pointer transition-all shadow-md active:scale-95`}
                 >
-                  <Plus className="h-4 w-4" />
-                  Save Service details
+                  Deploy AI Employee
                 </button>
               </form>
             </div>
@@ -1432,37 +1323,39 @@ export default function DashboardPage() {
 
         {/* -------------------- VIEW: KNOWLEDGE BASE -------------------- */}
         {activeTab === "kb" && (
-          <section id="tab-kb" className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             
-            {/* Left: FAQs list & Document chunks */}
-            <div className="md:col-span-2 space-y-8">
+            {/* Left: FAQs list & PDF documents lists */}
+            <div className="lg:col-span-2 space-y-6">
               
-              {/* FAQs */}
-              <div className="glass-panel rounded-2xl p-6">
-                <h3 className="text-base font-bold mb-4">FAQ Brain Contexts</h3>
+              {/* FAQs List */}
+              <div className="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-6">
+                <h3 className="text-sm font-bold text-slate-200 mb-4">RAG Q&A FAQ Brain rules</h3>
                 <div className="overflow-x-auto">
-                  <table className="custom-table">
+                  <table className="custom-table w-full">
                     <thead>
                       <tr>
-                        <th style={{ width: "35%" }}>Question</th>
-                        <th style={{ width: "55%" }}>Response (Kannada)</th>
-                        <th style={{ width: "10%" }}>Actions</th>
+                        <th className="text-left text-xs font-semibold text-slate-400 py-2.5" style={{ width: "35%" }}>Question</th>
+                        <th className="text-left text-xs font-semibold text-slate-400 py-2.5" style={{ width: "55%" }}>Response Answer</th>
+                        <th className="text-left text-xs font-semibold text-slate-400 py-2.5" style={{ width: "10%" }}>Actions</th>
                       </tr>
                     </thead>
                     <tbody>
                       {faqs.length === 0 ? (
                         <tr>
-                          <td colSpan={3} className="text-center text-slate-500 py-6">No FAQs configured yet.</td>
+                          <td colSpan={3} className="text-center text-slate-500 text-xs py-8">
+                            No FAQs added. Insert FAQ mappings on the right to train your voice agents.
+                          </td>
                         </tr>
                       ) : (
-                        faqs.map((faq) => (
-                          <tr key={faq.id}>
-                            <td className="font-semibold text-white text-xs">{faq.question}</td>
-                            <td className="text-xs text-slate-300 leading-normal">{faq.answer}</td>
-                            <td>
+                        faqs.map((f) => (
+                          <tr key={f.id} className="border-b border-slate-800/30 hover:bg-slate-800/5">
+                            <td className="py-2 px-1 text-xs font-bold text-white">{f.question}</td>
+                            <td className="py-2 px-1 text-xs text-slate-300 leading-normal">{f.answer}</td>
+                            <td className="py-2 px-1 text-xs">
                               <button
-                                className="text-red-400 hover:text-red-300"
-                                onClick={() => handleDeleteFaq(faq.id)}
+                                className="text-red-400 hover:text-red-300 cursor-pointer"
+                                onClick={() => handleDeleteFaq(f.id)}
                               >
                                 <Trash2 className="h-4.5 w-4.5" />
                               </button>
@@ -1475,27 +1368,34 @@ export default function DashboardPage() {
                 </div>
               </div>
 
-              {/* PDF Documents */}
-              <div className="glass-panel rounded-2xl p-6">
-                <h3 className="text-base font-bold mb-4">Parsed Documents & Brochures</h3>
+              {/* Uploaded vector context */}
+              <div className="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-6">
+                <h3 className="text-sm font-bold text-slate-200 mb-4">Parsed Documents & Crawler Links</h3>
                 {docs.length === 0 ? (
-                  <p className="text-center text-slate-500 text-xs py-4">No documents uploaded.</p>
+                  <p className="text-center text-slate-500 text-xs py-8">No documents or parsed links loaded in vector cache.</p>
                 ) : (
-                  <div className="grid grid-cols-1 gap-3">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {docs.map((doc) => (
-                      <div key={doc.id} className="bg-slate-900/60 border border-slate-800 p-4 rounded-xl flex justify-between items-start">
+                      <div key={doc.id} className="bg-slate-950/60 border border-slate-850 p-4 rounded-xl flex flex-col justify-between">
                         <div>
-                          <h4 className="text-xs font-bold text-white mb-1.5">{doc.name}</h4>
-                          <p className="text-[11px] text-slate-400 font-mono line-clamp-3 leading-relaxed">
+                          <div className="flex justify-between items-start mb-2">
+                            <span className="text-[9px] bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 px-2 py-0.5 rounded font-bold uppercase">{doc.file_type}</span>
+                            <button
+                              className="text-red-400 hover:text-red-300 cursor-pointer"
+                              onClick={() => handleDeleteDoc(doc.id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
+                          <h4 className="text-xs font-bold text-white mb-2 truncate" title={doc.name}>{doc.name}</h4>
+                          <p className="text-[10px] text-slate-400 leading-relaxed line-clamp-3">
                             {doc.text_content}
                           </p>
                         </div>
-                        <button
-                          className="text-red-400 hover:text-red-300 ml-4 shrink-0"
-                          onClick={() => handleDeleteDoc(doc.id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
+                        <div className="border-t border-slate-850 pt-2 mt-3 flex justify-between items-center text-[8px] text-slate-500 font-bold uppercase">
+                          <span>Status: Indexed</span>
+                          <span>Chunks: {Math.max(1, Math.round(doc.text_content.length / 300))}</span>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -1504,223 +1404,433 @@ export default function DashboardPage() {
 
             </div>
 
-            {/* Right: Upload FAQ / Doc forms */}
+            {/* Right: Upload FAQ & crawler forms */}
             <div className="space-y-6">
               
-              {/* FAQ Form */}
-              <div className="glass-panel rounded-2xl p-6">
-                <h3 className="text-xs font-bold uppercase text-slate-400 tracking-wider mb-4">Add FAQ context</h3>
-                <form onSubmit={handleAddFaq} className="space-y-4">
-                  <div>
-                    <input
-                      id="faq-q-input"
-                      type="text"
-                      required
-                      className="w-full bg-slate-900 border border-slate-800 focus:border-violet-500 rounded-lg p-2.5 text-xs focus:outline-none"
-                      placeholder="Question (e.g. ಬೆಲೆ ಎಷ್ಟು?)"
-                      value={newFaqQ}
-                      onChange={(e) => setNewFaqQ(e.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <textarea
-                      id="faq-a-input"
-                      required
-                      rows={3}
-                      className="w-full bg-slate-900 border border-slate-800 focus:border-violet-500 rounded-lg p-2.5 text-xs focus:outline-none"
-                      placeholder="Answer in Kannada (e.g. SmartMop ಬೆಲೆ ₹2999 ಆಗಿದೆ.)"
-                      value={newFaqA}
-                      onChange={(e) => setNewFaqA(e.target.value)}
-                    />
-                  </div>
-                  <button
-                    id="faq-submit"
-                    type="submit"
-                    className="w-full py-2 bg-violet-600 hover:bg-violet-500 text-xs font-bold rounded-lg cursor-pointer"
-                  >
-                    Add FAQ Brain Rule
-                  </button>
-                </form>
-              </div>
-
-              {/* Document upload form */}
-              <div className="glass-panel rounded-2xl p-6">
-                <h3 className="text-xs font-bold uppercase text-slate-400 tracking-wider mb-4">Simulate PDF / URL upload</h3>
-                <form onSubmit={handleAddDoc} className="space-y-4">
-                  <div>
-                    <input
-                      id="doc-name-input"
-                      type="text"
-                      required
-                      className="w-full bg-slate-900 border border-slate-800 focus:border-violet-500 rounded-lg p-2.5 text-xs focus:outline-none"
-                      placeholder="Document name (e.g. smartmop_brochure.pdf)"
-                      value={newDocName}
-                      onChange={(e) => setNewDocName(e.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <textarea
-                      id="doc-text-input"
-                      required
-                      rows={4}
-                      className="w-full bg-slate-900 border border-slate-800 focus:border-violet-500 rounded-lg p-2.5 text-xs focus:outline-none"
-                      placeholder="Paste PDF text copy or website content details..."
-                      value={newDocContent}
-                      onChange={(e) => setNewDocContent(e.target.value)}
-                    />
-                  </div>
-                  <button
-                    id="doc-submit"
-                    type="submit"
-                    className="w-full py-2 bg-violet-600 hover:bg-violet-500 text-xs font-bold rounded-lg cursor-pointer"
-                  >
-                    Parse and Index Chunks
-                  </button>
-                </form>
-              </div>
-
-            </div>
-          </section>
-        )}
-
-        {/* -------------------- VIEW: AGENTS BUILDER -------------------- */}
-        {activeTab === "agents" && (
-          <section id="tab-agents" className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            
-            {/* Left: Active Agents list */}
-            <div className="md:col-span-2 space-y-4">
-              <h3 className="text-base font-bold mb-2">Configured Voice Employees</h3>
-              {agents.map((ag) => (
-                <div key={ag.id} className="glass-panel rounded-2xl p-6 space-y-4">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h4 className="text-lg font-bold text-white">{ag.name}</h4>
-                      <p className="text-xs text-slate-400 mt-1">
-                        Lang: <strong>{ag.language}</strong> | Voice: <strong>{ag.voice_provider} ({ag.voice_id})</strong>
-                      </p>
-                    </div>
-
-                    <button
-                      className="flex items-center gap-1.5 px-4 py-2 bg-violet-600 hover:bg-violet-500 text-xs font-bold rounded-xl shadow-md transition-all active:scale-98"
-                      onClick={() => router.push(`/chat/${ag.id}`)}
-                    >
-                      <Play className="h-3.5 w-3.5 fill-white" />
-                      Test Live Call
-                    </button>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-                    <div className="bg-slate-900/60 p-3 rounded-lg border border-slate-800">
-                      <span className="font-semibold text-slate-400 block mb-1 uppercase tracking-wider text-[9px]">Greeting Phrase</span>
-                      <p className="text-slate-200 leading-normal">"{ag.greeting_message}"</p>
-                    </div>
-                    <div className="bg-slate-900/60 p-3 rounded-lg border border-slate-800">
-                      <span className="font-semibold text-slate-400 block mb-1 uppercase tracking-wider text-[9px]">Agent prompt constraints</span>
-                      <p className="text-slate-200 line-clamp-3 leading-normal">"{ag.system_prompt}"</p>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Right: Agent configuration wizard */}
-            <div className="glass-panel rounded-2xl p-6 h-fit">
-              <h3 className="text-base font-bold mb-4">Deploy Voice Employee</h3>
-              <form onSubmit={handleCreateAgent} className="space-y-4">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-400 mb-1.5">Agent Name</label>
+              {/* FAQ mapping */}
+              <div className="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-5">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">Add FAQ rule</h4>
+                <form onSubmit={handleAddFaq} className="space-y-3">
                   <input
-                    id="agent-name-input"
                     type="text"
                     required
-                    className="w-full bg-slate-900 border border-slate-800 focus:border-violet-500 rounded-lg p-2.5 text-xs focus:outline-none"
-                    placeholder="e.g. ಶಾರದಾ (Sharada)"
-                    value={newAgentName}
-                    onChange={(e) => setNewAgentName(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-850 focus:border-indigo-500 rounded-lg p-2.5 text-xs text-slate-200 focus:outline-none"
+                    placeholder="Question (e.g. ಬೆಲೆ ಎಷ್ಟು? / What is the cost?)"
+                    value={newFaqQ}
+                    onChange={(e) => setNewFaqQ(e.target.value)}
                   />
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-400 mb-1.5">Language</label>
-                    <select
-                      id="agent-lang-select"
-                      className="w-full bg-slate-900 border border-slate-800 focus:border-violet-500 rounded-lg p-2.5 text-xs focus:outline-none"
-                      value={newAgentLang}
-                      onChange={(e) => setNewAgentLang(e.target.value)}
-                    >
-                      <option value="Kannada">Kannada (ಕನ್ನಡ)</option>
-                      <option value="English">English</option>
-                      <option value="Hindi">Hindi (ಹಿಂದಿ)</option>
-                      <option value="Telugu">Telugu (ತೆಲುಗು)</option>
-                      <option value="Tamil">Tamil (ತಮಿಳು)</option>
-                      <option value="Malayalam">Malayalam</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-400 mb-1.5">Voice Engine</label>
-                    <select
-                      id="agent-voice-select"
-                      className="w-full bg-slate-900 border border-slate-800 focus:border-violet-500 rounded-lg p-2.5 text-xs focus:outline-none"
-                      value={newAgentVoice}
-                      onChange={(e) => setNewAgentVoice(e.target.value)}
-                    >
-                      <option value="native">Browser TTS</option>
-                      <option value="elevenlabs">ElevenLabs Realtime</option>
-                      <option value="openai">OpenAI Realtime</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-400 mb-1.5">Greeting Message</label>
-                  <input
-                    id="agent-greet-input"
-                    type="text"
-                    className="w-full bg-slate-900 border border-slate-800 focus:border-violet-500 rounded-lg p-2.5 text-xs focus:outline-none"
-                    placeholder="Leave blank for automatic greeting..."
-                    value={newAgentGreet}
-                    onChange={(e) => setNewAgentGreet(e.target.value)}
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-400 mb-1.5">Instructions & Persona prompt</label>
                   <textarea
-                    id="agent-instructions-input"
                     required
-                    rows={5}
-                    className="w-full bg-slate-900 border border-slate-800 focus:border-violet-500 rounded-lg p-2.5 text-xs focus:outline-none"
-                    placeholder="Describe their phone manners, role, specs to lookup, and when to book demos..."
-                    value={newAgentPrompt}
-                    onChange={(e) => setNewAgentPrompt(e.target.value)}
+                    rows={3}
+                    className="w-full bg-slate-950 border border-slate-850 focus:border-indigo-500 rounded-lg p-2.5 text-xs text-slate-200 focus:outline-none"
+                    placeholder="Response (e.g. Cost is ₹2999 per month.)"
+                    value={newFaqA}
+                    onChange={(e) => setNewFaqA(e.target.value)}
                   />
-                </div>
+                  <button
+                    type="submit"
+                    className={`w-full py-2 bg-gradient-to-r ${buttonBg} text-white text-xs font-bold rounded-lg cursor-pointer`}
+                  >
+                    Index FAQ rule
+                  </button>
+                </form>
+              </div>
 
-                <button
-                  id="agent-submit-btn"
-                  type="submit"
-                  className="w-full flex items-center justify-center gap-2 py-2.5 bg-violet-600 hover:bg-violet-500 text-xs font-bold rounded-lg cursor-pointer"
-                >
-                  <Plus className="h-4 w-4" />
-                  Deploy Agent
-                </button>
-              </form>
+              {/* PDF Paste */}
+              <div className="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-5">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">Paste PDF / Brochure copy</h4>
+                <form onSubmit={handleAddDoc} className="space-y-3">
+                  <input
+                    type="text"
+                    required
+                    className="w-full bg-slate-950 border border-slate-850 focus:border-indigo-500 rounded-lg p-2.5 text-xs text-slate-200 focus:outline-none"
+                    placeholder="Document Name (e.g. smart_specs.pdf)"
+                    value={newDocName}
+                    onChange={(e) => setNewDocName(e.target.value)}
+                  />
+                  <textarea
+                    required
+                    rows={4}
+                    className="w-full bg-slate-950 border border-slate-850 focus:border-indigo-500 rounded-lg p-2.5 text-xs text-slate-200 focus:outline-none"
+                    placeholder="Paste PDF text copy specifications..."
+                    value={newDocContent}
+                    onChange={(e) => setNewDocContent(e.target.value)}
+                  />
+                  <button
+                    type="submit"
+                    className={`w-full py-2 bg-gradient-to-r ${buttonBg} text-white text-xs font-bold rounded-lg cursor-pointer`}
+                  >
+                    Parse document context
+                  </button>
+                </form>
+              </div>
+
+              {/* Crawler link */}
+              <div className="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-5">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">Crawl & Embed URL website</h4>
+                <form onSubmit={handleUrlImport} className="space-y-3">
+                  <input
+                    type="url"
+                    required
+                    className="w-full bg-slate-950 border border-slate-850 focus:border-indigo-500 rounded-lg p-2.5 text-xs text-slate-200 focus:outline-none"
+                    placeholder="https://example.com/pricing"
+                    value={newUrlImport}
+                    onChange={(e) => setNewUrlImport(e.target.value)}
+                  />
+                  <button
+                    type="submit"
+                    disabled={isUrlImporting}
+                    className={`w-full py-2 bg-slate-850 hover:bg-slate-800 text-slate-200 border border-slate-800 hover:border-slate-700 text-xs font-bold rounded-lg cursor-pointer disabled:opacity-50`}
+                  >
+                    {isUrlImporting ? "Crawling & indexing URL..." : "Embed URL vectors"}
+                  </button>
+                </form>
+              </div>
+
+            </div>
+          </section>
+        )}
+
+        {/* -------------------- VIEW: CALL HISTORY -------------------- */}
+        {activeTab === "history" && (
+          <section className="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-6">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-sm font-bold text-slate-200">Conversations & Transcripts Archive</h3>
+              <span className="text-[10px] text-slate-500 font-bold uppercase font-mono">Real-time sync list</span>
+            </div>
+            
+            <div className="overflow-x-auto">
+              <table className="custom-table w-full">
+                <thead>
+                  <tr>
+                    <th className="text-left py-3 px-4 text-xs font-semibold text-slate-400">Customer Name</th>
+                    <th className="text-left py-3 px-4 text-xs font-semibold text-slate-400">Audio Playback</th>
+                    <th className="text-left py-3 px-4 text-xs font-semibold text-slate-400">Duration</th>
+                    <th className="text-left py-3 px-4 text-xs font-semibold text-slate-400">Sentiment</th>
+                    <th className="text-left py-3 px-4 text-xs font-semibold text-slate-400">Outcome summary</th>
+                    <th className="text-left py-3 px-4 text-xs font-semibold text-slate-400">Date & Time</th>
+                    <th className="text-left py-3 px-4 text-xs font-semibold text-slate-400">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {calls.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="text-center text-slate-500 py-12 text-xs">No voice call recordings saved yet.</td>
+                    </tr>
+                  ) : (
+                    calls.map((c) => (
+                      <tr key={c.id} className="border-b border-slate-800/30 hover:bg-slate-800/5">
+                        <td className="py-3 px-4 text-xs font-bold text-white">{c.customer_name}</td>
+                        <td className="py-3 px-4 text-xs">
+                          {/* Audio Wave player simulation */}
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => handlePlayMockRecording(c.id)}
+                              className={`p-1.5 rounded-full cursor-pointer transition-all ${
+                                audioPlayState === c.id 
+                                  ? "bg-red-500/20 text-red-500" 
+                                  : "bg-slate-800 text-slate-400 hover:text-white"
+                              }`}
+                            >
+                              <Play className={`h-3 w-3 ${audioPlayState === c.id ? "animate-pulse" : ""}`} />
+                            </button>
+                            {audioPlayState === c.id ? (
+                              <div className="flex items-center gap-0.5 w-16">
+                                {[...Array(5)].map((_, i) => (
+                                  <div
+                                    key={i}
+                                    style={{ height: `${Math.floor(Math.random() * 12) + 4}px` }}
+                                    className="w-0.5 bg-red-500 rounded-full animate-pulse"
+                                  />
+                                ))}
+                              </div>
+                            ) : (
+                              <span className="text-[9px] text-slate-500 font-mono">0:00 / 0:{c.duration_seconds}</span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="py-3 px-4 text-xs font-mono text-slate-300">{c.duration_seconds}s</td>
+                        <td className="py-3 px-4 text-xs">
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase border ${
+                            c.sentiment === "positive" ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400" :
+                            c.sentiment === "frustrated" ? "bg-red-500/10 border-red-500/20 text-red-400" :
+                            "bg-slate-500/10 border-slate-500/20 text-slate-400"
+                          }`}>
+                            {c.sentiment || "neutral"}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 text-xs max-w-xs truncate text-slate-400">{c.summary || "Call completed naturally."}</td>
+                        <td className="py-3 px-4 text-xs text-slate-500">{new Date(c.created_at).toLocaleString("en-IN")}</td>
+                        <td className="py-3 px-4 text-xs">
+                          <button
+                            className="px-2.5 py-1.5 bg-slate-950 border border-slate-800 hover:bg-slate-850 text-[10px] font-bold text-white rounded-lg transition-all cursor-pointer"
+                            onClick={() => openCallLogs(c)}
+                          >
+                            Open Details
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        )}
+
+        {/* -------------------- VIEW: LEADS CRM -------------------- */}
+        {activeTab === "leads" && (
+          <section className="space-y-6">
+            
+            {/* Qualified CRM table */}
+            <div className="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-6">
+              <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4 mb-6">
+                <div>
+                  <h3 className="text-sm font-bold text-slate-200">Customer Leads & CRM Pipeline</h3>
+                  <p className="text-xs text-slate-400 mt-1">
+                    Manage lead pipelines, update status selections, edit notes, and dial calls using the VoiceOS AI simulator.
+                  </p>
+                </div>
+                <span className="text-[10px] bg-slate-800/50 border border-slate-800 text-slate-400 px-3 py-1.5 rounded-lg font-bold">
+                  Total Leads count: {totalLeadsCount}
+                </span>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="custom-table w-full">
+                  <thead>
+                    <tr>
+                      <th className="text-left py-3 px-4 text-xs font-semibold text-slate-400">Name</th>
+                      <th className="text-left py-3 px-4 text-xs font-semibold text-slate-400">Phone</th>
+                      <th className="text-left py-3 px-4 text-xs font-semibold text-slate-400">Budget</th>
+                      <th className="text-left py-3 px-4 text-xs font-semibold text-slate-400">Callback window</th>
+                      <th className="text-left py-3 px-4 text-xs font-semibold text-slate-400" style={{ width: "22%" }}>Intent requirements</th>
+                      <th className="text-left py-3 px-4 text-xs font-semibold text-slate-400">Lead Score</th>
+                      <th className="text-left py-3 px-4 text-xs font-semibold text-slate-400">Lead Status</th>
+                      <th className="text-left py-3 px-4 text-xs font-semibold text-slate-400" style={{ width: "15%" }}>Followup Notes</th>
+                      <th className="text-left py-3 px-4 text-xs font-semibold text-slate-400">Call Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {customers.length === 0 ? (
+                      <tr>
+                        <td colSpan={9} className="text-center text-slate-500 py-12 text-xs">No leads generated. Test the frontend live demo to insert new leads!</td>
+                      </tr>
+                    ) : (
+                      customers.map((lead) => {
+                        const extra = leadsExtraMap[lead.id] || { status: "New", notes: "" };
+                        
+                        return (
+                          <tr key={lead.id} className="border-b border-slate-800/30 hover:bg-slate-800/5">
+                            <td className="py-3 px-4 text-xs font-bold text-white">{lead.name}</td>
+                            <td className="py-3 px-4 text-xs font-mono text-slate-300">{lead.phone}</td>
+                            <td className="py-3 px-4 text-xs text-indigo-400 font-bold">₹{lead.budget || 0}</td>
+                            <td className="py-3 px-4 text-xs text-slate-400">{lead.callback_time || "N/A"}</td>
+                            <td className="py-3 px-4 text-xs text-slate-300 max-w-[200px] truncate" title={lead.requirements}>{lead.requirements || "Product inquiry"}</td>
+                            <td className="py-3 px-4 text-xs">
+                              <div className="flex items-center gap-2">
+                                <div className="w-14 bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                                  <div 
+                                    className={`h-full ${
+                                      lead.lead_score >= 80 ? "bg-emerald-500" :
+                                      lead.lead_score >= 50 ? "bg-amber-500" : "bg-red-500"
+                                    }`}
+                                    style={{ width: `${lead.lead_score}%` }}
+                                  />
+                                </div>
+                                <span className="text-[10px] font-bold font-mono text-slate-300">{lead.lead_score}%</span>
+                              </div>
+                            </td>
+                            <td className="py-3 px-4 text-xs">
+                              <select
+                                className="bg-slate-950 border border-slate-800 text-[10px] text-slate-300 font-semibold p-1 rounded-md focus:outline-none"
+                                value={extra.status}
+                                onChange={(e) => handleLeadStatusChange(lead.id, e.target.value)}
+                              >
+                                <option value="New">New</option>
+                                <option value="Contacted">Contacted</option>
+                                <option value="Qualified">Qualified</option>
+                                <option value="Closed">Closed</option>
+                              </select>
+                            </td>
+                            <td className="py-3 px-4 text-xs">
+                              <input
+                                type="text"
+                                className="bg-slate-950 border border-slate-850 text-[10px] rounded p-1 text-slate-300 w-full focus:outline-none"
+                                placeholder="Add followup details..."
+                                value={extra.notes}
+                                onChange={(e) => handleLeadNotesChange(lead.id, e.target.value)}
+                              />
+                            </td>
+                            <td className="py-3 px-4 text-xs">
+                              <button
+                                className="p-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/25 rounded-lg cursor-pointer transition-all active:scale-95"
+                                onClick={() => handleCallLead(lead)}
+                                title="Dial simulated call"
+                              >
+                                <PhoneCall className="h-3.5 w-3.5" />
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Scheduled slots list */}
+            <div className="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-6">
+              <h3 className="text-sm font-bold text-slate-200 mb-4">Upcoming Sales Demo Appointments</h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {appointments.length === 0 ? (
+                  <div className="col-span-3 text-center text-slate-500 py-6 text-xs">No appointments calendar mappings found.</div>
+                ) : (
+                  appointments.map((app) => (
+                    <div key={app.id} className="bg-slate-950/60 border border-slate-850 p-4 rounded-xl flex flex-col justify-between">
+                      <div>
+                        <div className="flex justify-between items-start mb-2">
+                          <span className="text-xs font-bold text-indigo-400">{app.time}</span>
+                          <span className="text-[9px] bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded font-extrabold uppercase">
+                            {app.status}
+                          </span>
+                        </div>
+                        <h4 className="text-xs font-bold text-white mb-2">Live Demo Appointment Call</h4>
+                        <p className="text-xs text-slate-400 leading-normal italic">
+                          "{app.notes}"
+                        </p>
+                      </div>
+                      <div className="border-t border-slate-850 pt-2 mt-4 text-[9px] text-slate-500 font-bold uppercase">
+                        Scheduled Date: {app.date}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
             </div>
 
           </section>
         )}
 
-        {/* -------------------- VIEW: SUBSCRIPTIONS & RAZORPAY -------------------- */}
-        {activeTab === "billing" && (
-          <section id="tab-billing" className="space-y-8">
+        {/* -------------------- VIEW: ANALYTICS CONSOLE -------------------- */}
+        {activeTab === "analytics" && (
+          <section className="space-y-6">
             
-            {/* Plan grids */}
+            {/* Widget layout */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               
-              <div className="glass-panel rounded-2xl p-6 flex flex-col justify-between border-slate-800">
+              <div className="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-6">
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Active Call Completion</span>
+                <div className="text-2xl font-black mt-2 text-white">98.4%</div>
+                <p className="text-[10px] text-slate-400 mt-2 leading-relaxed">Percentage of calls fully answered by bots without drops.</p>
+              </div>
+
+              <div className="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-6">
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Language Distribution</span>
+                <div className="space-y-2 mt-3.5">
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-slate-400">Kannada (ಕನ್ನಡ)</span>
+                    <strong className="text-white">65%</strong>
+                  </div>
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-slate-400">English</span>
+                    <strong className="text-white">20%</strong>
+                  </div>
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-slate-400">Others (Telugu/Hindi)</span>
+                    <strong className="text-white">15%</strong>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-6 flex flex-col justify-between">
+                <div>
+                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Avg Response Speed</span>
+                  <div className="text-2xl font-black mt-2 text-indigo-400">1.2 seconds</div>
+                </div>
+                <p className="text-[10px] text-slate-400 leading-relaxed mt-2">Latency benchmark from speech recognition end to vocal audio generation.</p>
+              </div>
+
+            </div>
+
+            {/* Top Customer Questions & Volume distribution */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              
+              {/* FAQ topics */}
+              <div className="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-6">
+                <h3 className="text-sm font-bold text-slate-200 mb-4">Top Customer Questions / Inquiry Topics</h3>
                 <div className="space-y-4">
-                  <h4 className="text-sm font-bold text-slate-400 uppercase tracking-widest">Starter</h4>
+                  {[
+                    { topic: "Pricing packages and monthly billing", count: 48, percentage: 80 },
+                    { topic: "AI support and language availability", count: 32, percentage: 60 },
+                    { topic: "Razorpay integration configuration details", count: 24, percentage: 45 },
+                    { topic: "Consultation and calendar booking slots", count: 18, percentage: 32 },
+                    { topic: "Warranty, delivery and return policies", count: 12, percentage: 20 }
+                  ].map((item, idx) => (
+                    <div key={idx} className="space-y-1.5">
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="font-semibold text-slate-300">{item.topic}</span>
+                        <span className="text-[10px] text-slate-500 font-bold">{item.count} inquiries</span>
+                      </div>
+                      <div className="w-full bg-slate-950 h-2 rounded-full overflow-hidden">
+                        <div 
+                          className={`h-full bg-gradient-to-r ${headerGradient} rounded-full`}
+                          style={{ width: `${item.percentage}%` }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Weekly graphs stats */}
+              <div className="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-6">
+                <h3 className="text-sm font-bold text-slate-200 mb-4">Quality & Sentiment KPIs</h3>
+                <div className="space-y-4">
+                  <div className="bg-slate-950/60 border border-slate-850 p-4 rounded-xl">
+                    <span className="text-[10px] text-slate-500 block uppercase font-bold tracking-widest mb-1.5">Call Completion Outcomes</span>
+                    <div className="grid grid-cols-3 gap-2 text-center text-xs">
+                      <div>
+                        <span className="text-emerald-400 font-extrabold font-mono block text-md">84%</span>
+                        <span className="text-[9px] text-slate-500 uppercase font-bold">Closed Sale</span>
+                      </div>
+                      <div>
+                        <span className="text-amber-400 font-extrabold font-mono block text-md">12%</span>
+                        <span className="text-[9px] text-slate-500 uppercase font-bold">Followup call</span>
+                      </div>
+                      <div>
+                        <span className="text-red-400 font-extrabold font-mono block text-md">4%</span>
+                        <span className="text-[9px] text-slate-500 uppercase font-bold">Uninterested</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-950/60 border border-slate-850 p-4 rounded-xl">
+                    <span className="text-[10px] text-slate-500 block uppercase font-bold tracking-widest mb-1">Average Call Length Distribution</span>
+                    <p className="text-xs text-slate-300">
+                      Most conversations settle between <strong className="text-white">35 seconds to 1.5 minutes</strong>, providing optimal qualification rates.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+          </section>
+        )}
+
+        {/* -------------------- VIEW: BILLING & PLANS -------------------- */}
+        {activeTab === "billing" && (
+          <section className="space-y-6">
+            
+            {/* Packages */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              
+              {/* Starter */}
+              <div className="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-6 flex flex-col justify-between">
+                <div className="space-y-4">
+                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Starter Package</h4>
                   <div className="flex items-baseline gap-1">
                     <span className="text-3xl font-extrabold text-white">₹2,999</span>
                     <span className="text-xs text-slate-500">/month</span>
@@ -1728,14 +1838,14 @@ export default function DashboardPage() {
                   <ul className="space-y-2 text-xs text-slate-400">
                     <li className="flex items-center gap-2">✓ 500 Call Minutes</li>
                     <li className="flex items-center gap-2">✓ 1 Active AI voice agent</li>
-                    <li className="flex items-center gap-2">✓ Standard FAQ RAG</li>
+                    <li className="flex items-center gap-2">✓ Standard vector FAQ RAG rules</li>
                   </ul>
                 </div>
                 <button
-                  className={`w-full py-2 rounded-lg text-xs font-bold mt-8 transition-all ${
+                  className={`w-full py-2.5 rounded-lg text-xs font-bold mt-8 transition-all cursor-pointer ${
                     subscription?.plan === "starter" 
-                      ? "bg-slate-800 text-slate-400 cursor-not-allowed" 
-                      : "bg-violet-600 hover:bg-violet-500 text-white cursor-pointer"
+                      ? "bg-slate-850 border border-slate-800 text-slate-500 cursor-not-allowed" 
+                      : `bg-gradient-to-r ${buttonBg} text-white`
                   }`}
                   onClick={() => handleUpgradePlan("starter")}
                   disabled={subscription?.plan === "starter"}
@@ -1744,28 +1854,29 @@ export default function DashboardPage() {
                 </button>
               </div>
 
-              <div className="glass-panel rounded-2xl p-6 flex flex-col justify-between border-violet-500/30 bg-violet-950/5 relative overflow-hidden">
-                <div className="absolute top-3 right-3 bg-violet-600 text-white text-[9px] font-extrabold px-2 py-0.5 rounded uppercase">
+              {/* Growth */}
+              <div className={`bg-slate-900/60 border border-indigo-500/30 bg-indigo-950/5 rounded-2xl p-6 flex flex-col justify-between relative overflow-hidden`}>
+                <div className="absolute top-3 right-3 bg-indigo-600 text-white text-[9px] font-extrabold px-2.5 py-1 rounded uppercase tracking-wider">
                   Popular
                 </div>
                 <div className="space-y-4">
-                  <h4 className="text-sm font-bold text-violet-400 uppercase tracking-widest">Growth</h4>
+                  <h4 className="text-xs font-bold text-indigo-400 uppercase tracking-widest">Growth Package</h4>
                   <div className="flex items-baseline gap-1">
                     <span className="text-3xl font-extrabold text-white">₹7,999</span>
                     <span className="text-xs text-slate-500">/month</span>
                   </div>
-                  <ul className="space-y-2 text-xs text-slate-355">
+                  <ul className="space-y-2 text-xs text-slate-300">
                     <li className="flex items-center gap-2">✓ 2,000 Call Minutes</li>
                     <li className="flex items-center gap-2">✓ 3 Active AI agents</li>
-                    <li className="flex items-center gap-2">✓ WhatsApp lead integration</li>
-                    <li className="flex items-center gap-2">✓ Advanced vector documents</li>
+                    <li className="flex items-center gap-2">✓ WhatsApp webhook integration</li>
+                    <li className="flex items-center gap-2">✓ Custom documents vector context</li>
                   </ul>
                 </div>
                 <button
-                  className={`w-full py-2 rounded-lg text-xs font-bold mt-8 transition-all ${
+                  className={`w-full py-2.5 rounded-lg text-xs font-bold mt-8 transition-all cursor-pointer ${
                     subscription?.plan === "growth" 
-                      ? "bg-slate-800 text-slate-400 cursor-not-allowed" 
-                      : "bg-violet-600 hover:bg-violet-500 text-white cursor-pointer"
+                      ? "bg-slate-850 border border-slate-800 text-slate-500 cursor-not-allowed" 
+                      : `bg-gradient-to-r ${buttonBg} text-white`
                   }`}
                   onClick={() => handleUpgradePlan("growth")}
                   disabled={subscription?.plan === "growth"}
@@ -1774,25 +1885,26 @@ export default function DashboardPage() {
                 </button>
               </div>
 
-              <div className="glass-panel rounded-2xl p-6 flex flex-col justify-between border-slate-800">
+              {/* Pro */}
+              <div className="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-6 flex flex-col justify-between">
                 <div className="space-y-4">
-                  <h4 className="text-sm font-bold text-slate-400 uppercase tracking-widest">Pro</h4>
+                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Pro Package</h4>
                   <div className="flex items-baseline gap-1">
                     <span className="text-3xl font-extrabold text-white">₹14,999</span>
                     <span className="text-xs text-slate-500">/month</span>
                   </div>
                   <ul className="space-y-2 text-xs text-slate-400">
-                    <li className="flex items-center gap-2">✓ Unlimited agents</li>
-                    <li className="flex items-center gap-2">✓ CRM & API syncing integrations</li>
-                    <li className="flex items-center gap-2">✓ Outbound call campaigns</li>
-                    <li className="flex items-center gap-2">✓ Dedicated account supervisor</li>
+                    <li className="flex items-center gap-2">✓ Unlimited voice employees</li>
+                    <li className="flex items-center gap-2">✓ Real-time CRM syncing</li>
+                    <li className="flex items-center gap-2">✓ Bulk outbound dialer campaigns</li>
+                    <li className="flex items-center gap-2">✓ Account manager supervisor</li>
                   </ul>
                 </div>
                 <button
-                  className={`w-full py-2 rounded-lg text-xs font-bold mt-8 transition-all ${
+                  className={`w-full py-2.5 rounded-lg text-xs font-bold mt-8 transition-all cursor-pointer ${
                     subscription?.plan === "pro" 
-                      ? "bg-slate-800 text-slate-400 cursor-not-allowed" 
-                      : "bg-violet-600 hover:bg-violet-500 text-white cursor-pointer"
+                      ? "bg-slate-850 border border-slate-800 text-slate-500 cursor-not-allowed" 
+                      : `bg-gradient-to-r ${buttonBg} text-white`
                   }`}
                   onClick={() => handleUpgradePlan("pro")}
                   disabled={subscription?.plan === "pro"}
@@ -1803,37 +1915,37 @@ export default function DashboardPage() {
 
             </div>
 
-            {/* Payments list history */}
-            <div className="glass-panel rounded-2xl p-6">
-              <h3 className="text-base font-bold mb-4">Workspace Billing & Payments Logs</h3>
+            {/* Payments billing log */}
+            <div className="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-6">
+              <h3 className="text-sm font-bold text-slate-200 mb-4">Billing History Logs & Sandbox Invoices</h3>
               <div className="overflow-x-auto">
-                <table className="custom-table">
+                <table className="custom-table w-full">
                   <thead>
                     <tr>
-                      <th>Payment ID</th>
-                      <th>Plan Activated</th>
-                      <th>Amount</th>
-                      <th>Status</th>
-                      <th>Date / Time</th>
+                      <th className="text-left py-3 px-4 text-xs font-semibold text-slate-400">Invoice ID</th>
+                      <th className="text-left py-3 px-4 text-xs font-semibold text-slate-400">Selected Plan</th>
+                      <th className="text-left py-3 px-4 text-xs font-semibold text-slate-400">Paid Amount</th>
+                      <th className="text-left py-3 px-4 text-xs font-semibold text-slate-400">Status</th>
+                      <th className="text-left py-3 px-4 text-xs font-semibold text-slate-400">Payment Date</th>
                     </tr>
                   </thead>
                   <tbody>
                     {payments.length === 0 ? (
                       <tr>
-                        <td colSpan={5} className="text-center text-slate-500 py-6">No payments recorded.</td>
+                        <td colSpan={5} className="text-center text-slate-500 py-6 text-xs">No billing logs recorded yet.</td>
                       </tr>
                     ) : (
-                      payments.map((p) => (
-                        <tr key={p.id}>
-                          <td className="font-mono text-xs text-slate-300">{p.razorpay_payment_id}</td>
-                          <td className="uppercase font-semibold text-white">{subscription?.plan}</td>
-                          <td className="text-violet-400 font-bold">₹{p.amount}</td>
-                          <td>
-                            <span className="badge badge-success px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
-                              {p.status}
+                      payments.map((pay) => (
+                        <tr key={pay.id} className="border-b border-slate-800/30">
+                          <td className="py-3 px-4 text-xs font-mono text-slate-300">{pay.razorpay_payment_id}</td>
+                          <td className="py-3 px-4 text-xs font-bold uppercase text-white">{subscription?.plan}</td>
+                          <td className="py-3 px-4 text-xs text-indigo-400 font-bold">₹{pay.amount || 0}</td>
+                          <td className="py-3 px-4 text-xs">
+                            <span className="badge badge-success px-2 py-0.5 rounded text-[9px] font-bold uppercase bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
+                              {pay.status}
                             </span>
                           </td>
-                          <td className="text-xs text-slate-400">{new Date(p.created_at).toLocaleString("en-IN")}</td>
+                          <td className="py-3 px-4 text-xs text-slate-500">{new Date(pay.created_at).toLocaleString("en-IN")}</td>
                         </tr>
                       ))
                     )}
@@ -1845,201 +1957,135 @@ export default function DashboardPage() {
           </section>
         )}
 
-        {/* -------------------- VIEW: SETTINGS & TELEPHONY -------------------- */}
-        {activeTab === "billing" && <></>} {/* redirect billing visual */}
-        
-        {/* Settings view */}
-        {activeTab === "services" && <></>} {/* placeholder */}
-
-        {/* -------------------- VIEW: SUPER ADMIN PANEL -------------------- */}
-        {activeTab === "admin" && isSuperAdmin && (
-          <section id="tab-admin" className="space-y-8">
-            
-            {/* Aggregated Platform Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
-              
-              <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl">
-                <span className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Registered Workspaces</span>
-                <div className="text-3xl font-extrabold mt-1 text-white">{adminStats?.totalBusinesses || 0}</div>
-              </div>
-
-              <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl">
-                <span className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Active Platform Users</span>
-                <div className="text-3xl font-extrabold mt-1 text-white">{adminStats?.totalUsers || 0}</div>
-              </div>
-
-              <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl">
-                <span className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Cumulative SaaS Calls</span>
-                <div className="text-3xl font-extrabold mt-1 text-white">{adminStats?.totalCalls || 0}</div>
-              </div>
-
-              <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl">
-                <span className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Platform SaaS Revenue</span>
-                <div className="text-3xl font-extrabold mt-1 text-emerald-400">₹{adminStats?.totalRevenue || 0}</div>
-              </div>
-
-            </div>
-
-            {/* List all workspaces */}
-            <div className="glass-panel rounded-2xl p-6">
-              <h3 className="text-base font-bold mb-4">Active Business Workspaces List</h3>
-              <div className="overflow-x-auto">
-                <table className="custom-table">
-                  <thead>
-                    <tr>
-                      <th>Workspace Name</th>
-                      <th>Category</th>
-                      <th>Contact Phone</th>
-                      <th>Active Plan</th>
-                      <th>Status</th>
-                      <th>Registration Date</th>
-                      <th>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {adminBusinesses.map((bizObj) => (
-                      <tr key={bizObj.id}>
-                        <td className="font-semibold text-white">{bizObj.name}</td>
-                        <td>{bizObj.category}</td>
-                        <td className="font-mono text-xs">{bizObj.phone}</td>
-                        <td className="uppercase font-semibold text-violet-400">{bizObj.plan}</td>
-                        <td>
-                          <span className="badge badge-success px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
-                            {bizObj.status}
-                          </span>
-                        </td>
-                        <td className="text-xs text-slate-400">{new Date(bizObj.created_at).toLocaleDateString()}</td>
-                        <td>
-                          <button
-                            className="px-3 py-1 bg-red-900/10 border border-red-500/20 hover:bg-red-500/15 text-red-400 rounded-lg text-xs font-semibold transition-all"
-                            onClick={() => alert("Workspace suspension disabled for sandbox validation safety.")}
-                          >
-                            Suspend Business
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-          </section>
-        )}
-
-        {/* Settings integration */}
+        {/* -------------------- VIEW: SETTINGS -------------------- */}
         {activeTab === "settings" && (
-          <section className="space-y-6 max-w-4xl">
-            <div className="glass-panel rounded-2xl p-6">
-              <h3 className="text-base font-bold mb-4">India Telephony Integrations (Inbound & Outbound Calling)</h3>
-              <p className="text-xs text-slate-400 mb-6">
-                Configure your Exotel or Twilio phone numbers below to link your live voice agents.
-              </p>
-
-              <form onSubmit={handleSaveTelephony} className="space-y-6">
+          <section className="space-y-6 max-w-3xl">
+            
+            <div className="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-6">
+              <h3 className="text-sm font-bold text-slate-200 mb-4">Workspace & General Profile Settings</h3>
+              
+              <form onSubmit={handleSaveSettings} className="space-y-5">
                 
-                {/* Provider choice */}
-                <div>
-                  <label className="block text-xs font-semibold text-slate-400 mb-2">Telephony calling gateway</label>
-                  <select
-                    className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2.5 text-xs text-slate-200 focus:outline-none"
-                    value={provider}
-                    onChange={(e) => setProvider(e.target.value as any)}
-                  >
-                    <option value="disabled">Sandbox Calling Dialer Emulator (No API keys required)</option>
-                    <option value="twilio">Twilio Integration (International/India)</option>
-                    <option value="exotel">Exotel Integration (India local gateway)</option>
-                  </select>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1.5">Business Name</label>
+                    <input
+                      type="text"
+                      required
+                      className="w-full bg-slate-950 border border-slate-850 rounded-lg p-2.5 text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
+                      value={settingsBizName}
+                      onChange={(e) => setSettingsBizName(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1.5">Business Category</label>
+                    <select
+                      className="w-full bg-slate-950 border border-slate-850 rounded-lg p-2.5 text-xs text-slate-300 focus:outline-none focus:border-indigo-500"
+                      value={settingsCategory}
+                      onChange={(e) => setSettingsCategory(e.target.value)}
+                    >
+                      <option value="Real Estate">Real Estate</option>
+                      <option value="Hospital / Healthcare">Hospital / Healthcare</option>
+                      <option value="Education">Education</option>
+                      <option value="Restaurant / Food Services">Restaurant / Food Services</option>
+                      <option value="E-Commerce">E-Commerce</option>
+                      <option value="Insurance / Finance">Insurance / Finance</option>
+                    </select>
+                  </div>
                 </div>
 
-                {provider === "twilio" && (
-                  <div className="space-y-4 border-t border-slate-800 pt-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-xs font-semibold text-slate-400 mb-1.5">Twilio Account SID</label>
-                        <input
-                          type="text"
-                          className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2.5 text-xs focus:outline-none"
-                          value={twilioSid}
-                          onChange={(e) => setTwilioSid(e.target.value)}
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-semibold text-slate-400 mb-1.5">Twilio Auth Token</label>
-                        <input
-                          type="password"
-                          className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2.5 text-xs focus:outline-none"
-                          value={twilioToken}
-                          onChange={(e) => setTwilioToken(e.target.value)}
-                        />
-                      </div>
-                    </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1.5">Contact Phone</label>
+                    <input
+                      type="text"
+                      required
+                      className="w-full bg-slate-950 border border-slate-850 rounded-lg p-2.5 text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
+                      value={settingsPhone}
+                      onChange={(e) => setSettingsPhone(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1.5">Profile Timezone</label>
+                    <select
+                      className="w-full bg-slate-950 border border-slate-850 rounded-lg p-2.5 text-xs text-slate-300 focus:outline-none focus:border-indigo-500"
+                      value={timezone}
+                      onChange={(e) => setTimezone(e.target.value)}
+                    >
+                      <option value="IST (UTC+05:30)">IST (UTC+05:30) - India Standard Time</option>
+                      <option value="EST (UTC-05:00)">EST (UTC-05:00) - Eastern Standard Time</option>
+                      <option value="GMT (UTC+00:00)">GMT (UTC+00:00) - Greenwich Mean Time</option>
+                      <option value="PST (UTC-08:00)">PST (UTC-08:00) - Pacific Standard Time</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1.5">Workspace Description / AI Context</label>
+                  <textarea
+                    rows={3}
+                    className="w-full bg-slate-950 border border-slate-850 rounded-lg p-2.5 text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
+                    placeholder="Short description of your business to guide general fallback queries..."
+                    value={settingsDesc}
+                    onChange={(e) => setSettingsDesc(e.target.value)}
+                  />
+                </div>
+
+                <div className="border-t border-slate-800/80 pt-4 space-y-4">
+                  <h4 className="text-xs font-bold text-slate-300">Custom Branding Options</h4>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-xs font-semibold text-slate-400 mb-1.5">Twilio Connected Phone Number (with code)</label>
+                      <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1.5">Logo Text</label>
                       <input
                         type="text"
-                        className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2.5 text-xs focus:outline-none"
-                        placeholder="e.g. +14159876543"
-                        value={twilioPhone}
-                        onChange={(e) => setTwilioPhone(e.target.value)}
+                        className="w-full bg-slate-950 border border-slate-850 rounded-lg p-2.5 text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
+                        value={brandingLogoText}
+                        onChange={(e) => setBrandingLogoText(e.target.value)}
                       />
                     </div>
-                  </div>
-                )}
-
-                {provider === "exotel" && (
-                  <div className="space-y-4 border-t border-slate-800 pt-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-xs font-semibold text-slate-400 mb-1.5">Exotel API Key</label>
-                        <input
-                          type="text"
-                          className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2.5 text-xs focus:outline-none"
-                          value={exotelApiKey}
-                          onChange={(e) => setExotelApiKey(e.target.value)}
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-semibold text-slate-400 mb-1.5">Exotel Auth Token</label>
-                        <input
-                          type="password"
-                          className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2.5 text-xs focus:outline-none"
-                          value={exotelToken}
-                          onChange={(e) => setExotelToken(e.target.value)}
-                        />
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-xs font-semibold text-slate-400 mb-1.5">Exotel Account SID</label>
-                        <input
-                          type="text"
-                          className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2.5 text-xs focus:outline-none"
-                          value={exotelSid}
-                          onChange={(e) => setExotelSid(e.target.value)}
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-semibold text-slate-400 mb-1.5">Exotel Connected Number</label>
-                        <input
-                          type="text"
-                          className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2.5 text-xs focus:outline-none"
-                          value={exotelPhone}
-                          onChange={(e) => setExotelPhone(e.target.value)}
-                        />
+                    <div>
+                      <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1.5">Workspace Brand Color</label>
+                      <div className="flex gap-2.5 mt-2">
+                        {[
+                          { key: "violet", bg: "bg-violet-600" },
+                          { key: "indigo", bg: "bg-indigo-600" },
+                          { key: "emerald", bg: "bg-emerald-600" },
+                          { key: "rose", bg: "bg-rose-600" }
+                        ].map((c) => (
+                          <button
+                            key={c.key}
+                            type="button"
+                            onClick={() => setBrandingColor(c.key)}
+                            className={`h-6 w-6 rounded-full ${c.bg} cursor-pointer transition-all ${
+                              brandingColor === c.key ? "ring-2 ring-white scale-110" : "opacity-60"
+                            }`}
+                          />
+                        ))}
                       </div>
                     </div>
                   </div>
-                )}
+                </div>
 
                 <button
                   type="submit"
-                  className="py-2.5 px-6 bg-violet-600 hover:bg-violet-500 text-xs font-bold rounded-lg cursor-pointer transition-all"
+                  className={`py-2.5 px-6 bg-gradient-to-r ${buttonBg} text-xs font-bold text-white rounded-lg cursor-pointer transition-all shadow-md active:scale-95`}
                 >
-                  Save calling settings
+                  Save Workspace Config
                 </button>
+
               </form>
             </div>
+
+            {/* Security disclaimer info */}
+            <div className="bg-slate-900/30 border border-slate-800/80 p-5 rounded-2xl flex gap-3 text-xs leading-normal text-slate-400">
+              <ShieldCheck className="h-5 w-5 text-emerald-400 shrink-0" />
+              <div>
+                <strong className="text-slate-200 font-bold block mb-1">Developer API Security Guard Active</strong>
+                VoiceOS AI restricts direct API key exposures (Twilio, Exotel, OpenAI, ElevenLabs credentials) from client-side configurations. All test calls utilize secure backend sandbox wrappers to guarantee telephony line isolation.
+              </div>
+            </div>
+
           </section>
         )}
 
@@ -2048,18 +2094,18 @@ export default function DashboardPage() {
       {/* --- Phone Call Dialer Emulator Overlay Modal --- */}
       {dialingLead && (
         <div className="fixed inset-0 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-slate-900 border border-slate-800 w-full max-w-md rounded-3xl overflow-hidden shadow-2xl relative">
+          <div className="bg-slate-900 border border-slate-800 w-full max-w-md rounded-3xl overflow-hidden shadow-2xl relative font-sans">
             
             {/* Dialer Ringing Banner */}
-            <div className="bg-gradient-to-r from-emerald-600 to-teal-600 p-6 text-white text-center">
+            <div className={`bg-gradient-to-r ${headerGradient} p-6 text-white text-center`}>
               <div className="inline-flex p-3 bg-white/10 rounded-full animate-bounce mb-3">
                 <Phone className="h-6 w-6" />
               </div>
               <h3 className="text-lg font-bold">{dialingLead.name}</h3>
               <p className="text-xs text-white/80 font-mono mt-1">{dialingLead.phone}</p>
               
-              <div className="mt-3 text-xs bg-black/20 py-1.5 px-3 rounded-full inline-block font-semibold">
-                Status: <span className="uppercase text-yellow-300 animate-pulse font-bold">{dialCallStatus}</span>
+              <div className="mt-3 text-xs bg-black/20 py-1.5 px-3 rounded-full inline-block font-bold">
+                Status: <span className="uppercase text-yellow-300 animate-pulse">{dialCallStatus}</span>
               </div>
             </div>
 
@@ -2069,7 +2115,7 @@ export default function DashboardPage() {
                 {dialTranscript.map((t, idx) => (
                   <div key={idx} className={`text-xs max-w-[85%] ${
                     t.role === "system" ? "text-slate-500 mx-auto text-center font-mono py-1" :
-                    t.role === "user" ? "ml-auto bg-violet-600 text-white p-2.5 rounded-2xl rounded-br-sm" :
+                    t.role === "user" ? "ml-auto bg-indigo-600 text-white p-2.5 rounded-2xl rounded-br-sm" :
                     "mr-auto bg-slate-850 border border-slate-800 text-slate-100 p-2.5 rounded-2xl rounded-bl-sm"
                   }`}>
                     {t.content}
@@ -2077,21 +2123,21 @@ export default function DashboardPage() {
                 ))}
                 {isPaying && (
                   <div className="text-[10px] text-slate-500 animate-pulse text-center">
-                    AI Agent listening / transcribing Kannada speech...
+                    AI Agent listening / transcribing speech...
                   </div>
                 )}
               </div>
 
-              {/* Call Simulator Interaction Controls */}
+              {/* Call Simulator Controls */}
               {dialCallStatus === "connected" && (
                 <div className="space-y-4">
                   {/* Waveform visualizer */}
                   {dialMicActive && (
-                    <div className="flex justify-center items-center gap-1.5 h-6">
-                      {[...Array(8)].map((_, i) => (
+                    <div className="flex justify-center items-center gap-1 h-6">
+                      {[...Array(12)].map((_, i) => (
                         <div
                           key={i}
-                          style={{ height: `${(i % 2 === 0 ? dialSpeechPulse : dialSpeechPulse / 2) * 3 + 4}px` }}
+                          style={{ height: `${(i % 2 === 0 ? dialSpeechPulse : dialSpeechPulse / 2) * 3.5 + 4}px` }}
                           className="w-1 bg-red-500 rounded-full transition-all duration-100"
                         />
                       ))}
@@ -2101,23 +2147,21 @@ export default function DashboardPage() {
                   {/* Inputs */}
                   <div className="flex gap-2">
                     <button
-                      id="dial-mic-toggle"
                       onClick={toggleDialMic}
                       className={`p-3 border rounded-xl cursor-pointer transition-all ${
                         dialMicActive 
-                          ? "bg-red-500/20 border-red-500/40 text-red-500 mic-pulse-animation" 
+                          ? "bg-red-500/20 border-red-500/40 text-red-500" 
                           : "bg-slate-950 border-slate-850 text-slate-400 hover:text-white"
                       }`}
-                      title="Speak in Kannada"
+                      title="Toggle Microphone Input"
                     >
                       {dialMicActive ? <MicOff className="h-4.5 w-4.5" /> : <Mic className="h-4.5 w-4.5" />}
                     </button>
 
                     <input
-                      id="dial-input"
                       type="text"
                       className="flex-grow bg-slate-950 border border-slate-850 rounded-xl px-4 text-xs focus:outline-none"
-                      placeholder="Type simulated caller response in Kannada (e.g. ಬೆಲೆ ಎಷ್ಟು?)..."
+                      placeholder="Type response (e.g. ಬೆಲೆ ಎಷ್ಟು? or What is the price?)..."
                       value={dialInputText}
                       onChange={(e) => setDialInputText(e.target.value)}
                       onKeyDown={(e) => {
@@ -2129,38 +2173,49 @@ export default function DashboardPage() {
                     />
 
                     <button
-                      id="dial-submit"
                       onClick={() => {
                         if (dialInputText.trim()) {
                           runSandboxWebhookStep(dialInputText);
                           setDialInputText("");
                         }
                       }}
-                      className="p-3 bg-violet-600 hover:bg-violet-500 text-white rounded-xl cursor-pointer"
+                      className="p-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl cursor-pointer"
                     >
                       <ArrowRight className="h-4.5 w-4.5" />
                     </button>
                   </div>
 
-                  {/* Suggestion buttons */}
+                  {/* Quick-simulate buttons */}
                   <div className="flex flex-wrap gap-1.5 justify-center">
                     <button 
                       onClick={() => runSandboxWebhookStep("ಬೆಲೆ ಎಷ್ಟು?")}
                       className="bg-slate-950 hover:bg-slate-850 border border-slate-850 text-[10px] font-semibold text-slate-400 hover:text-white px-2.5 py-1.5 rounded-lg"
                     >
-                      Price?
+                      Cost? (KN)
                     </button>
                     <button 
-                      onClick={() => runSandboxWebhookStep("ನನ್ನ ಹೆಸರು ರವಿ, ಬಜೆಟ್ ೩೦೦೦ ರುಪಾಯಿ")}
+                      onClick={() => runSandboxWebhookStep("What is the cost?")}
                       className="bg-slate-950 hover:bg-slate-850 border border-slate-850 text-[10px] font-semibold text-slate-400 hover:text-white px-2.5 py-1.5 rounded-lg"
                     >
-                      Qualify Lead
+                      Cost? (EN)
                     </button>
                     <button 
-                      onClick={() => runSandboxWebhookStep("ಮ್ಯಾನೇಜರ್‌ನೊಂದಿಗೆ ಮಾತನಾಡಬೇಕಾಗಿದೆ")}
-                      className="bg-slate-950 hover:bg-slate-850 border border-slate-850 text-[10px] font-semibold text-red-400 px-2.5 py-1.5 rounded-lg"
+                      onClick={() => runSandboxWebhookStep("ನನ್ನ ಬಜೆಟ್ ೩೦೦೦ ರುಪಾಯಿ")}
+                      className="bg-slate-950 hover:bg-slate-850 border border-slate-850 text-[10px] font-semibold text-slate-400 hover:text-white px-2.5 py-1.5 rounded-lg"
                     >
-                      Escalate
+                      Qualify Lead (KN)
+                    </button>
+                    <button 
+                      onClick={() => runSandboxWebhookStep("My budget is ₹3000")}
+                      className="bg-slate-950 hover:bg-slate-850 border border-slate-850 text-[10px] font-semibold text-slate-400 hover:text-white px-2.5 py-1.5 rounded-lg"
+                    >
+                      Qualify Lead (EN)
+                    </button>
+                    <button 
+                      onClick={() => runSandboxWebhookStep("ಸಮಾಲೋಚನೆ ಬುಕ್ ಮಾಡಿ")}
+                      className="bg-slate-950 hover:bg-slate-850 border border-slate-850 text-[10px] font-semibold text-emerald-400 px-2.5 py-1.5 rounded-lg"
+                    >
+                      Book Consultation
                     </button>
                   </div>
                 </div>
@@ -2168,7 +2223,6 @@ export default function DashboardPage() {
 
               {/* Hangup button */}
               <button
-                id="dial-hangup"
                 onClick={handleHangUpCall}
                 className="w-full mt-6 py-3 bg-red-600 hover:bg-red-500 text-white font-bold rounded-xl text-xs cursor-pointer shadow-lg shadow-red-600/20 active:scale-98"
               >
@@ -2184,13 +2238,13 @@ export default function DashboardPage() {
       {/* --- Razorpay Secure Payment Simulator --- */}
       {showPayModal && (
         <div className="fixed inset-0 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-slate-900 border border-slate-800 w-full max-w-sm rounded-2xl overflow-hidden shadow-2xl">
+          <div className="bg-slate-900 border border-slate-800 w-full max-w-sm rounded-2xl overflow-hidden shadow-2xl font-sans">
             <div className="bg-indigo-600 p-5 text-white flex justify-between items-center">
               <div>
-                <span className="text-[10px] font-extrabold uppercase tracking-wider opacity-80">Razorpay Secure Checkout</span>
-                <h4 className="text-lg font-bold">Pay to KannadaAI Business OS</h4>
+                <span className="text-[10px] font-extrabold uppercase tracking-wider opacity-85">Razorpay Secure Checkout</span>
+                <h4 className="text-lg font-bold">Authorize Upgrade Payment</h4>
               </div>
-              <button onClick={() => setShowPayModal(null)} className="text-white hover:opacity-85 text-xl font-bold">
+              <button onClick={() => setShowPayModal(null)} className="text-white hover:opacity-85 text-xl font-bold cursor-pointer">
                 &times;
               </button>
             </div>
@@ -2209,9 +2263,8 @@ export default function DashboardPage() {
                 </span>
               </div>
               <button
-                id="razorpay-confirm-btn"
                 onClick={executeRazorpaySuccess}
-                className="w-full py-3 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-xl cursor-pointer transition-all"
+                className="w-full py-3 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-xl cursor-pointer transition-all active:scale-95"
                 disabled={isPaying}
               >
                 {isPaying ? "Authorizing checkout..." : "Authorize Sandbox Payment"}
@@ -2221,10 +2274,10 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* --- Call Transcript Modal View --- */}
+      {/* --- Call Transcript & Playback Modal View --- */}
       {selectedCall && (
         <div 
-          className="fixed inset-0 bg-black/85 backdrop-blur-xs flex items-center justify-center p-4 z-50"
+          className="fixed inset-0 bg-black/85 backdrop-blur-xs flex items-center justify-center p-4 z-50 font-sans"
           onClick={() => setSelectedCall(null)}
         >
           <div 
@@ -2233,20 +2286,46 @@ export default function DashboardPage() {
           >
             <div className="p-5 border-b border-slate-800 flex justify-between items-center">
               <div>
-                <h3 className="text-md font-bold text-white">Call Transcript: {selectedCall.customer_name}</h3>
+                <h3 className="text-md font-bold text-white">Call Recording Transcript: {selectedCall.customer_name}</h3>
                 <p className="text-[10px] text-slate-400 mt-1">
-                  Duration: {selectedCall.duration_seconds}s | Date: {new Date(selectedCall.created_at).toLocaleDateString()}
+                  Duration: {selectedCall.duration_seconds}s | Classification: <span className="uppercase text-slate-200">{selectedCall.sentiment}</span>
                 </p>
               </div>
-              <button onClick={() => setSelectedCall(null)} className="text-slate-400 hover:text-slate-200">
+              <button onClick={() => setSelectedCall(null)} className="text-slate-400 hover:text-slate-200 cursor-pointer">
                 <X className="h-5 w-5" />
               </button>
             </div>
 
-            <div className="p-5 max-h-96 overflow-y-auto space-y-4">
+            {/* Playback Simulation waveform */}
+            <div className="bg-slate-950 border-b border-slate-800 p-4 flex items-center gap-4">
+              <button
+                onClick={() => handlePlayMockRecording(selectedCall.id)}
+                className={`p-2.5 rounded-full cursor-pointer transition-all ${
+                  audioPlayState === selectedCall.id 
+                    ? "bg-red-500 text-white" 
+                    : "bg-indigo-600 text-white hover:bg-indigo-500"
+                }`}
+              >
+                <Play className="h-4.5 w-4.5 fill-white" />
+              </button>
+              <div className="flex-grow">
+                <div className="flex justify-between text-[9px] text-slate-500 mb-1">
+                  <span>Playback: {audioPlayState === selectedCall.id ? `0:${Math.round(audioProgress * selectedCall.duration_seconds / 100)}` : "0:00"}</span>
+                  <span>Total: 0:{selectedCall.duration_seconds}s</span>
+                </div>
+                <div className="bg-slate-850 h-1.5 rounded-full overflow-hidden relative">
+                  <div 
+                    className="bg-indigo-500 h-full transition-all duration-300"
+                    style={{ width: `${audioPlayState === selectedCall.id ? audioProgress : 0}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="p-5 max-h-80 overflow-y-auto space-y-4 bg-slate-900/50">
               {isTranscriptLoading ? (
-                <div className="text-center py-8">
-                  <div className="pulsing-indicator active h-6 w-6 mr-2" />
+                <div className="text-center py-12">
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-500 mx-auto mb-2" />
                   <span className="text-xs text-slate-400">Loading transcript log...</span>
                 </div>
               ) : selectedTranscript.length === 0 ? (
@@ -2258,12 +2337,12 @@ export default function DashboardPage() {
                     className={`flex flex-col max-w-[80%] ${m.role === "user" ? "ml-auto items-end" : "mr-auto items-start"}`}
                   >
                     <div className={`p-3 rounded-xl text-xs leading-normal ${
-                      m.role === "user" ? "bg-violet-600 text-white" : "bg-slate-800 border border-slate-700/50 text-slate-200"
+                      m.role === "user" ? "bg-indigo-600 text-white" : "bg-slate-800 border border-slate-700/50 text-slate-200"
                     }`}>
                       {m.content}
                     </div>
                     <span className="text-[9px] text-slate-500 font-bold mt-1 px-1">
-                      {m.role === "user" ? "Customer" : "AI Agent"}
+                      {m.role === "user" ? "Customer Caller" : "VoiceOS AI Employee"}
                     </span>
                   </div>
                 ))
@@ -2272,10 +2351,120 @@ export default function DashboardPage() {
 
             {selectedCall.summary && (
               <div className="p-5 bg-slate-950 border-t border-slate-800/80">
-                <h5 className="text-[10px] uppercase font-bold text-slate-400 mb-1 tracking-wider">AI Transcript Summary</h5>
-                <p className="text-xs text-slate-355 leading-normal">{selectedCall.summary}</p>
+                <h5 className="text-[10px] uppercase font-bold text-slate-400 mb-1.5 tracking-wider">AI Transcript Summary</h5>
+                <p className="text-xs text-slate-300 leading-normal font-sans">{selectedCall.summary}</p>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* --- Configure Edit Agent Modal View --- */}
+      {editingAgent && (
+        <div className="fixed inset-0 bg-black/85 backdrop-blur-xs flex items-center justify-center p-4 z-50 font-sans">
+          <div className="bg-slate-900 border border-slate-800 w-full max-w-md rounded-2xl shadow-2xl overflow-hidden">
+            
+            <div className="p-5 border-b border-slate-800 flex justify-between items-center bg-slate-950/40">
+              <h3 className="text-sm font-bold text-white">Configure AI Employee: {editingAgent.name}</h3>
+              <button onClick={() => setEditingAgent(null)} className="text-slate-400 hover:text-slate-200 cursor-pointer">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEditAgent} className="p-6 space-y-4">
+              <div>
+                <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1.5">Employee Name</label>
+                <input
+                  type="text"
+                  required
+                  className="w-full bg-slate-950 border border-slate-850 rounded-lg p-2.5 text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
+                  value={editAgentName}
+                  onChange={(e) => setEditAgentName(e.target.value)}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1.5">Language</label>
+                  <select
+                    className="w-full bg-slate-950 border border-slate-855 rounded-lg p-2 text-xs text-slate-300 focus:outline-none focus:border-indigo-500"
+                    value={editAgentLang}
+                    onChange={(e) => setEditAgentLang(e.target.value)}
+                  >
+                    <option value="Kannada">Kannada (ಕನ್ನಡ)</option>
+                    <option value="Telugu">Telugu (ತೆಲುಗು)</option>
+                    <option value="Hindi">Hindi (ಹಿಂದಿ)</option>
+                    <option value="English">English</option>
+                    <option value="Tamil">Tamil (ತಮಿಳು)</option>
+                    <option value="Malayalam">Malayalam</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1.5">Voice Accent</label>
+                  <select
+                    className="w-full bg-slate-950 border border-slate-855 rounded-lg p-2 text-xs text-slate-300 focus:outline-none focus:border-indigo-500"
+                    value={editAgentVoice}
+                    onChange={(e) => setEditAgentVoice(e.target.value)}
+                  >
+                    <option value="native">Browser Vocal TTS</option>
+                    <option value="elevenlabs">ElevenLabs Custom</option>
+                    <option value="openai">OpenAI Realtime</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1.5">Objective / Role</label>
+                <select
+                  className="w-full bg-slate-950 border border-slate-850 rounded-lg p-2.5 text-xs text-slate-300 focus:outline-none focus:border-indigo-500"
+                  value={editAgentRole}
+                  onChange={(e) => setEditAgentRole(e.target.value)}
+                >
+                  <option value="Sales Representative">Sales Representative</option>
+                  <option value="Customer Support Agent">Customer Support Agent</option>
+                  <option value="Appointment Booker">Appointment Booker</option>
+                  <option value="Feedback Surveyor">Feedback Surveyor</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1.5">Greeting Message</label>
+                <input
+                  type="text"
+                  required
+                  className="w-full bg-slate-950 border border-slate-850 rounded-lg p-2.5 text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
+                  value={editAgentGreet}
+                  onChange={(e) => setEditAgentGreet(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1.5">Instructions Prompt</label>
+                <textarea
+                  required
+                  rows={4}
+                  className="w-full bg-slate-950 border border-slate-850 rounded-lg p-2.5 text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
+                  value={editAgentPrompt}
+                  onChange={(e) => setEditAgentPrompt(e.target.value)}
+                />
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setEditingAgent(null)}
+                  className="flex-1 py-2 bg-slate-800 hover:bg-slate-750 text-xs font-bold text-slate-300 rounded-lg cursor-pointer transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className={`flex-1 py-2 bg-gradient-to-r ${buttonBg} text-white text-xs font-bold rounded-lg cursor-pointer transition-all`}
+                >
+                  Save Configurations
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

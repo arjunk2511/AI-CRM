@@ -73,6 +73,10 @@ export const dbClient = {
     return callDbApi("updateAgent", { agentId, updates });
   },
 
+  async deleteAgent(agentId: string): Promise<void> {
+    return callDbApi("deleteAgent", { agentId });
+  },
+
   // --- Products ---
   async getProducts(businessId: string): Promise<Product[]> {
     return callDbApi("getProducts", { businessId });

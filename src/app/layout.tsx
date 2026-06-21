@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "KannadaAI Business OS - AI Employee Platform",
-  description: "Deploy business-specific Kannada speaking AI employees to handle support, qualify leads, and book appointments automatically.",
+  title: "VoiceOS AI - Autonomous AI Voice Employees Platform",
+  description: "Deploy AI voice employees that answer calls, qualify leads, and book appointments 24/7 in multiple languages.",
 };
 
 export default function RootLayout({
@@ -24,7 +24,7 @@ export default function RootLayout({
 }>) {
   return (
     <html
-      lang="kn"
+      lang="en"
       className={`${geistSans.variable} ${geistMono.variable}`}
     >
       <body>{children}</body>

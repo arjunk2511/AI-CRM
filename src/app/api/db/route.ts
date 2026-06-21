@@ -68,6 +68,10 @@ export async function POST(request: NextRequest) {
       case "updateAgent":
         result = await dbService.updateAgent(params.agentId, params.updates);
         break;
+      case "deleteAgent":
+        await dbService.deleteAgent(params.agentId);
+        result = { success: true };
+        break;
 
       // --- Products ---
       case "getProducts":

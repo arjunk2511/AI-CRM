@@ -681,6 +681,12 @@ export const dbService = {
     return data;
   },
 
+  async deleteAgent(agentId: string): Promise<void> {
+    this._ensureSupabase();
+    const { error } = await supabase!.from("agents").delete().eq("id", agentId);
+    if (error) throw error;
+  },
+
   // --- Products ---
   async getProducts(businessId: string): Promise<Product[]> {
     this._ensureSupabase();

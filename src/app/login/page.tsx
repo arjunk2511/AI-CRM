@@ -146,11 +146,11 @@ export default function LoginPage() {
               <Sparkles className="h-6 w-6 text-white" />
             </div>
             <h1 className="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-violet-400 via-indigo-400 to-indigo-500 bg-clip-text text-transparent drop-shadow-md">
-              KannadaAI Business OS
+              VoiceOS AI
             </h1>
           </div>
           <p className="text-sm text-slate-400">
-            SaaS Platform for Kannada Speaking AI Employees
+            Enterprise Console for Autonomous AI Voice Employees
           </p>
         </div>
 
