@@ -8,6 +8,8 @@ import {
   Database, Upload, Share2, Zap, BarChart, TrendingUp, Users,
   BookOpen, ChevronRight, HelpCircle, PhoneOutgoing, Headphones, Volume2
 } from "lucide-react";
+import { dbClient } from "@/lib/dbClient";
+
 
 // Demo configurations
 const INDUSTRIES = [
@@ -242,11 +244,59 @@ export default function LandingPage() {
     setIsSubmitting(true);
     
     try {
-      // Simulate API submit delay
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // 1. Fetch current workspace ID dynamically
+      let workspaceId = "demo-business-id";
+      try {
+        const wsRes = await fetch("/api/debug/workspace");
+        if (wsRes.ok) {
+          const wsData = await wsRes.json();
+          if (wsData.workspace_id) {
+            workspaceId = wsData.workspace_id;
+          }
+        }
+      } catch (wsErr) {
+        console.warn("Could not fetch debug workspace ID:", wsErr);
+      }
+
+      // 2. Format requirements text
+      const reqList = [];
+      if (reqInbound) reqList.push("Preferred Language");
+      if (reqOutbound) reqList.push("Male/Female Voice Accent");
+      if (reqWhatsApp) reqList.push("Inbound Calls Support");
+      if (reqChatbot) reqList.push("Outbound Calls Dialer");
+      
+      const reqText = `Business Name: ${bizName} | Owner: ${ownerName} | Type: ${bizType} | Volume: ${callVolume} | Reqs: ${reqList.join(", ") || "None selected"} | Notes: ${notes || "No custom instructions"}`;
+
+      // 3. Estimate budget from selected volume
+      const budgetMap: Record<string, number> = {
+        "100+": 1500,
+        "500+": 2999,
+        "1000+": 7999,
+        "5000+": 14999
+      };
+      const calculatedBudget = budgetMap[callVolume] || 1500;
+
+      // 4. Save lead customer to DB
+      await dbClient.upsertCustomer(workspaceId, phone, {
+        name: ownerName,
+        city: bizType + " Client",
+        budget: calculatedBudget,
+        requirements: reqText,
+        lead_score: 85,
+        is_lead: true
+      });
+
       setShowThankYou(true);
+      
+      // Reset form fields
+      setBizName("");
+      setOwnerName("");
+      setPhone("");
+      setEmail("");
+      setNotes("");
     } catch (err) {
-      console.error(err);
+      console.error("Failed to save landing page lead to DB:", err);
+      alert("There was an issue saving your request. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
