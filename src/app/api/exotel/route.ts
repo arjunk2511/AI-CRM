@@ -144,34 +144,53 @@ async function handleTelephonyRequest(request: NextRequest) {
     let conversationId = params.conversationId || params.ConversationSid || "";
     agentId = params.agentId || "";
 
-    // 2. Fetch Agent details
-    let agent = null;
+    const DEFAULT_FALLBACK_AGENT = {
+      id: "demo-agent-id",
+      business_id: "demo-business-id",
+      name: "ಕುಮಾರ್ (Kumar)",
+      personality: "Helpful, energetic, polite and professional sales representative.",
+      language: "Kannada",
+      greeting_message: "ನಮಸ್ಕಾರ! ನಾನು ಸ್ಮಾರ್ಟ್ ಮ್ಯಾಪ್ ಇಂಡಿಯಾ ಕಂಪನಿಯಿಂದ ಕುಮಾರ್ ಮಾತನಾಡುತ್ತಿದ್ದೇನೆ. ನಿಮಗೆ ಹೇಗೆ ಸಹಾಯ ಮಾಡಲಿ?",
+      working_hours: "09:00 - 18:00",
+      voice_provider: "native",
+      voice_id: "kn-IN-Wavenet-A",
+      system_prompt: "You are Kumar, a professional AI customer executive for SmartMop India. Speak polite Kannada. Keep answers extremely short (1-2 sentences) and look up product specifications like Price (₹2999), battery, and warranty. Offer appointment booking if the customer wants a live product demonstration.",
+      escalation_rules: "Transfer to supervisor if the customer gets angry, demands a refund, or asks specifically for a manager.",
+      fallback_response: "ಕ್ಷಮಿಸಿ, ಈ ವಿವರ ನನ್ನ ಬಳಿ ಇಲ್ಲ. ನನ್ನ ಮ್ಯಾನೇಜರ್‌ನೊಂದಿಗೆ ಮಾತನಾಡಲು ವರ್ಗಾಯಿಸಲೇ?"
+    };
+
+    // 2. Fetch Agent details with safety fallback
+    let agent: any = null;
+    console.log(`Exotel Webhook: Initiating lookup for agentId: "${agentId}"`);
+    
     if (agentId) {
       try {
         agent = await dbService.getAgent(agentId);
+        console.log("Exotel Webhook: Agent query result (by ID):", agent);
       } catch (err: any) {
-        console.error("[Exotel Webhook Failure] Component: Supabase Database (getAgent) - Error details:", err);
-        throw new Error(`Supabase Database (getAgent) error: ${err.message || err}`);
+        console.warn("[Exotel Webhook Warning] Supabase getAgent failed, trying default fallback:", err.message || err);
       }
     }
     
-    // If no agentId or agent not found, resolve a default agent
+    // If no agentId, agent not found, or DB query failed, resolve from database list
     if (!agent) {
       try {
-        // Find default business
         const businesses = await dbService.getAdminBusinessesList();
         const defaultBizId = businesses.length > 0 ? businesses[0].id : "demo-business-id";
-        const agents = await dbService.getAgents(defaultBizId);
-        agent = agents.length > 0 ? agents[0] : null;
+        const agentsList = await dbService.getAgents(defaultBizId);
+        agent = agentsList.length > 0 ? agentsList[0] : null;
+        console.log("Exotel Webhook: Agent query result (by list):", agent);
       } catch (err: any) {
-        console.error("[Exotel Webhook Failure] Component: Supabase Database (Resolve Default Agent) - Error details:", err);
-        throw new Error(`Supabase Database (Resolve Default Agent) error: ${err.message || err}`);
+        console.warn("[Exotel Webhook Warning] Resolving database default agent failed, using hardcoded fallback agent:", err.message || err);
       }
     }
 
+    // Ultimate hardcoded fallback to prevent call dropping/crashing
     if (!agent) {
-      throw new Error("No voice agent deployed in this workspace");
+      console.log("Exotel Webhook: Falling back to DEFAULT_FALLBACK_AGENT (Kumar)");
+      agent = DEFAULT_FALLBACK_AGENT;
     }
+
     agentId = agent.id;
 
     // 3. START OF CALL (Greeting phase)
