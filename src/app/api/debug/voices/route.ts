@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { supabase } from "@/lib/db";
 
 export async function GET(request: NextRequest) {
   const apiKey = process.env.ELEVENLABS_API_KEY || "";
@@ -8,6 +9,34 @@ export async function GET(request: NextRequest) {
       error: "Missing ELEVENLABS_API_KEY environment variable.",
       usable: false
     }, { status: 500 });
+  }
+
+  // 1. Resolve voice source
+  let voiceId = "21m00Tcm4TlvDq8ikWAM"; // default fallback
+  let source = "default fallback";
+
+  // Check environment variable
+  if (process.env.ELEVENLABS_VOICE_ID) {
+    voiceId = process.env.ELEVENLABS_VOICE_ID;
+    source = "environment variable";
+  }
+
+  // Check database for configured ElevenLabs voice
+  try {
+    if (supabase) {
+      const { data: agents } = await supabase
+        .from("agents")
+        .select("voice_provider, voice_id")
+        .eq("voice_provider", "elevenlabs")
+        .limit(1);
+      
+      if (agents && agents.length > 0 && agents[0].voice_id) {
+        voiceId = agents[0].voice_id;
+        source = "database";
+      }
+    }
+  } catch (dbErr) {
+    console.warn("Database lookup failed for active agent voice:", dbErr);
   }
 
   try {
@@ -22,31 +51,32 @@ export async function GET(request: NextRequest) {
 
     const data = await elResponse.json();
     const voicesList = data.voices || [];
-
-    // Filter for premade (default free) voices
     const premadeVoices = voicesList.filter((v: any) => v.category === "premade");
 
-    if (premadeVoices.length === 0) {
-      // If no premade voices exist, check if there's any voice
-      if (voicesList.length > 0) {
-        return NextResponse.json({
-          voice_id: voicesList[0].voice_id,
-          voice_name: voicesList[0].name,
-          category: voicesList[0].category,
-          usable: true,
-          warning: "No premade voices found, falling back to first available voice."
-        });
+    // Check if the resolved voiceId is a valid premade voice
+    const matchedVoice = voicesList.find((v: any) => v.voice_id === voiceId);
+    const isVoicePremade = matchedVoice && matchedVoice.category === "premade";
+
+    let finalVoice = matchedVoice;
+
+    if (!isVoicePremade) {
+      // Override with first premade voice if current selection is invalid or library voice
+      if (premadeVoices.length > 0) {
+        finalVoice = premadeVoices[0];
+        voiceId = finalVoice.voice_id;
+        source = "default fallback"; // since it fell back to default premade
+      } else if (voicesList.length > 0) {
+        finalVoice = voicesList[0];
+        voiceId = finalVoice.voice_id;
+        source = "default fallback";
       }
-      throw new Error("No voices returned by ElevenLabs API.");
     }
 
-    // Select the first premade voice as default
-    const selectedVoice = premadeVoices[0];
-
     return NextResponse.json({
-      voice_id: selectedVoice.voice_id,
-      voice_name: selectedVoice.name,
-      category: selectedVoice.category,
+      voice_id: voiceId,
+      voice_name: finalVoice?.name || "Rachel",
+      category: finalVoice?.category || "premade",
+      source: source,
       usable: true
     });
 
@@ -56,6 +86,7 @@ export async function GET(request: NextRequest) {
       voice_id: null,
       voice_name: null,
       category: null,
+      source: source,
       usable: false,
       error: err.message || String(err)
     }, { status: 500 });

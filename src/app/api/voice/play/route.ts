@@ -13,13 +13,21 @@ export async function GET(request: NextRequest) {
   // 1. Resolve Voice Config
   let voiceId = "21m00Tcm4TlvDq8ikWAM"; // default ElevenLabs Rachel
   let language = "Kannada";
+  let source = "default fallback";
+
+  // Check environment override
+  if (process.env.ELEVENLABS_VOICE_ID) {
+    voiceId = process.env.ELEVENLABS_VOICE_ID;
+    source = "environment variable";
+  }
 
   if (agentId) {
     try {
       const agent = await dbService.getAgent(agentId);
-      if (agent) {
-        voiceId = agent.voice_id || voiceId;
+      if (agent && agent.voice_id) {
+        voiceId = agent.voice_id;
         language = agent.language || language;
+        source = "database";
       }
     } catch (err) {
       console.warn("Could not load agent details for voice config:", err);
@@ -46,6 +54,9 @@ export async function GET(request: NextRequest) {
 
   // 2. Fetch and Automatically Resolve Voice (Filter out library / paid voices)
   let resolvedVoiceId = voiceId;
+  let voiceName = "Rachel";
+  let voiceCategory = "premade";
+
   try {
     const elVoicesRes = await fetch("https://api.elevenlabs.io/v1/voices", {
       headers: { "xi-api-key": apiKey }
@@ -55,15 +66,25 @@ export async function GET(request: NextRequest) {
       const voicesList = voicesData.voices || [];
       const premadeVoices = voicesList.filter((v: any) => v.category === "premade");
       
-      const isCurrentVoicePremade = premadeVoices.some((v: any) => v.voice_id === voiceId);
+      const matchedVoice = voicesList.find((v: any) => v.voice_id === voiceId);
+      const isCurrentVoicePremade = matchedVoice && matchedVoice.category === "premade";
       
+      if (matchedVoice) {
+        voiceName = matchedVoice.name;
+        voiceCategory = matchedVoice.category;
+      }
+
       if (!isCurrentVoicePremade) {
         if (premadeVoices.length > 0) {
           resolvedVoiceId = premadeVoices[0].voice_id;
-          console.log(`Auto-selected ElevenLabs premade voice: ${premadeVoices[0].name} (${resolvedVoiceId}) instead of "${voiceId}"`);
+          voiceName = premadeVoices[0].name;
+          voiceCategory = premadeVoices[0].category;
+          source = "default fallback";
         } else if (voicesList.length > 0) {
           resolvedVoiceId = voicesList[0].voice_id;
-          console.log(`No premade voices found. Falling back to first available voice: ${voicesList[0].name} (${resolvedVoiceId})`);
+          voiceName = voicesList[0].name;
+          voiceCategory = voicesList[0].category;
+          source = "default fallback";
         }
       }
     } else {
@@ -72,6 +93,12 @@ export async function GET(request: NextRequest) {
   } catch (err) {
     console.warn("Exception while querying ElevenLabs voices API:", err);
   }
+
+  console.log(`[ElevenLabs Play Runtime Voice Selection]:`);
+  console.log(`- Voice ID Sent to ElevenLabs: ${resolvedVoiceId}`);
+  console.log(`- Voice Name: ${voiceName}`);
+  console.log(`- Voice Category: ${voiceCategory}`);
+  console.log(`- Voice Source: ${source}`);
 
   // 3. Connect to ElevenLabs TTS
   try {
