@@ -74,7 +74,8 @@ export const telephonyService = {
         }
 
         const subdomain = config.exotelSubdomain || "api";
-        const exotelUrl = `https://${config.exotelApiKey}:${config.exotelToken}@${subdomain}.exotel.com/v1/Accounts/${config.exotelSid}/Calls/connect.json`;
+        const exotelUrl = `https://${subdomain}.exotel.com/v1/Accounts/${config.exotelSid}/Calls/connect.json`;
+        const authHeader = `Basic ${Buffer.from(`${config.exotelApiKey}:${config.exotelToken}`).toString("base64")}`;
 
         const params = new URLSearchParams();
         params.append("From", config.exotelPhone);
@@ -86,17 +87,20 @@ export const telephonyService = {
         const response = await fetch(exotelUrl, {
           method: "POST",
           headers: {
+            "Authorization": authHeader,
             "Content-Type": "application/x-www-form-urlencoded"
           },
           body: params.toString()
         });
 
+        const resText = await response.text();
+        console.log("Exotel API response body:", resText);
+
         if (!response.ok) {
-          const errText = await response.text();
-          throw new Error(errText || "Exotel call trigger failed");
+          throw new Error(resText || "Exotel call trigger failed");
         }
 
-        const resData = await response.json();
+        const resData = JSON.parse(resText);
         const callSid = resData.Call?.Sid;
 
         // Update database call record
