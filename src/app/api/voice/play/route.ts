@@ -44,9 +44,38 @@ export async function GET(request: NextRequest) {
     return new NextResponse("Error: ElevenLabs API Key is missing. Production speech synthesis is required.", { status: 500 });
   }
 
+  // 2. Fetch and Automatically Resolve Voice (Filter out library / paid voices)
+  let resolvedVoiceId = voiceId;
+  try {
+    const elVoicesRes = await fetch("https://api.elevenlabs.io/v1/voices", {
+      headers: { "xi-api-key": apiKey }
+    });
+    if (elVoicesRes.ok) {
+      const voicesData = await elVoicesRes.json();
+      const voicesList = voicesData.voices || [];
+      const premadeVoices = voicesList.filter((v: any) => v.category === "premade");
+      
+      const isCurrentVoicePremade = premadeVoices.some((v: any) => v.voice_id === voiceId);
+      
+      if (!isCurrentVoicePremade) {
+        if (premadeVoices.length > 0) {
+          resolvedVoiceId = premadeVoices[0].voice_id;
+          console.log(`Auto-selected ElevenLabs premade voice: ${premadeVoices[0].name} (${resolvedVoiceId}) instead of "${voiceId}"`);
+        } else if (voicesList.length > 0) {
+          resolvedVoiceId = voicesList[0].voice_id;
+          console.log(`No premade voices found. Falling back to first available voice: ${voicesList[0].name} (${resolvedVoiceId})`);
+        }
+      }
+    } else {
+      console.warn("ElevenLabs GET /v1/voices failed, relying on default voiceId.");
+    }
+  } catch (err) {
+    console.warn("Exception while querying ElevenLabs voices API:", err);
+  }
+
   // 3. Connect to ElevenLabs TTS
   try {
-    const elUrl = `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`;
+    const elUrl = `https://api.elevenlabs.io/v1/text-to-speech/${resolvedVoiceId}`;
     const elResponse = await fetch(elUrl, {
       method: "POST",
       headers: {
