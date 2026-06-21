@@ -245,21 +245,120 @@ You will format your complete response as a JSON string with the following field
             summary = `Offline FAQ Match: ${bestMatchFaq.question}`;
             outcome = "Information provided (local FAQ)";
           } else {
-            if (agent.language === "Kannada") {
-              reply = agent.fallback_response || "ಕ್ಷಮಿಸಿ, ಆ ಬಗ್ಗೆ ನನ್ನ ಹತ್ತಿರ ಮಾಹಿತಿ ಇಲ್ಲ. ಬೇರೆ ಸಹಾಯ ಬೇಕಾಗಿದೆಯೇ?";
-            } else if (agent.language === "Telugu") {
-              reply = agent.fallback_response || "క్షమించండి, ఆ సమాచారం నా దగ్గర లేదు. మరి ఏదైనా సహాయం కావాలా?";
-            } else if (agent.language === "Tamil") {
-              reply = agent.fallback_response || "மன்னிக்கவும், அந்த தகவல் என்னிடம் இல்லை. வேறு ஏதேனும் உதவி தேவையா?";
-            } else if (agent.language === "Hindi") {
-              reply = agent.fallback_response || "माफ़ कीजिये, मेरे पास वह जानकारी नहीं है। क्या कोई अन्य सहायता चाहिए?";
-            } else if (agent.language === "Malayalam") {
-              reply = agent.fallback_response || "ക്ഷമിക്കണം, ആ വിവരങ്ങൾ എന്റെ പക്കലില്ല. മറ്റ് എന്തെങ്കിലും സഹായം ആവശ്യമുണ്ടോ?";
-            } else {
-              reply = agent.fallback_response || "I'm sorry, I don't have that information. How else can I assist you?";
+            // Conversational Intent Matching fallback
+            const isGreeting = ["hello", "hi", "namaskara", "namaskar", "namaste", "ಹಲೋ", "ನಮಸ್ಕಾರ", "ಹಾಯ್", "హలో", "నమస్కారం", "హాయ్", "வணக்கம்", "नमस्ते", "നമസ്കാരം", "ഹലോ"].some(k => queryLower.includes(k));
+            const isIdentity = ["who are you", "what is your name", "name", "ನಿಮ್ಮ ಹೆಸರು", "ನೀವು ಯಾರು", "ನಿಮ್ಮ ಹೆಸರೇನು", "மீ പേరేంటి", "మీరెవరు", "మీ పేరు", "तुम्हारा नाम क्या है", "உன் பெயர் என்ன", "പേര്"].some(k => queryLower.includes(k));
+            const isTransfer = ["transfer", "manager", "human", "talk to human", "representative", "ಲೈವ್", "ವರ್ಗಾಯಿಸಿ", "ಮ್ಯಾನೇಜರ್", "ಲೈವ್ ಏಜೆಂಟ್", "ಮ್ಯಾನೇಜರ್", "మాట్లాడాలి", "లైవ్ ఏజెంట్", "மேலாளர்", "മനേജർ"].some(k => queryLower.includes(k));
+            const isScheduling = ["book", "schedule", "meeting", "consultation", "demo", "ಮೀಟಿಂಗ್", "ಬುಕ್", "ಮೀಟಿಂಗ್ ಬುಕ್", "மீட்டிங்", "బుకింగ్", "అపాయింట్‌మెంట్", "परामर्श", "अपॉइंटमेंट", "முன்பதிவு", "ബുക്കിംഗ്"].some(k => queryLower.includes(k));
+            const isBusiness = ["what is this", "how does it work", "voiceos", "voice os", "ಹೇಗೆ ಕೆಲಸ", "ಏನಿದು", "ಏನ್ ಇದು", "ఏంటిది", "ఎలా పనిచేస్తుంది", "ఎలా పని చేస్తుంది", "काम कैसे करता है", "எப்படி செயல்படுகிறது"].some(k => queryLower.includes(k));
+
+            if (isGreeting) {
+              if (agent.language === "Kannada") {
+                reply = "ನಮಸ್ಕಾರ! ನಿಮ್ಮೊಂದಿಗೆ ಮಾತನಾಡಲು ಸಂತೋಷವಾಗಿದೆ. ಇಂದು ನಾನು ನಿಮಗೆ ಹೇಗೆ ಸಹಾಯ ಮಾಡಲಿ?";
+              } else if (agent.language === "Telugu") {
+                reply = "నమస్కారం! మీతో మాట్లాడటం చాలా సంతోషంగా ఉంది. ఈ రోజు నేను మీకు ఎలా సహాయపడగలను?";
+              } else if (agent.language === "Tamil") {
+                reply = "வணக்கம்! உங்களுடன் பேசுவதில் மிக்க மகிழ்ச்சி. இன்று நான் உங்களுக்கு எவ்வாறு உதவ முடியும்?";
+              } else if (agent.language === "Hindi") {
+                reply = "नमस्ते! आपसे बात करके बहुत खुशी हुई। आज मैं आपकी क्या सहायता कर सकता हूँ?";
+              } else if (agent.language === "Malayalam") {
+                reply = "നമസ്കാരം! നിങ്ങളോട് സംസാരിക്കുന്നതിൽ വളരെ സന്തോഷമുണ്ട്. ഇന്ന് ഞാൻ എങ്ങനെയാണ് സഹായിക്കേണ്ടത്?";
+              } else {
+                reply = "Hello! It is a pleasure speaking with you. How can I assist you today?";
+              }
+              summary = "Simulated intent matching: Greeting";
+              outcome = "Information provided";
+            } 
+            else if (isIdentity) {
+              if (agent.language === "Kannada") {
+                reply = `ನನ್ನ ಹೆಸರು ${agent.name}. ನಾನು VoiceOS AI ನಿಂದ ನಿಮ್ಮ ಸಹಾಯಕ್ಕೆ ನಿಯೋಜಿತವಾಗಿರುವ ಸ್ವಯಂಚಾಲಿತ ಧ್ವನಿ ನೌಕರ.`;
+              } else if (agent.language === "Telugu") {
+                reply = `నా పేరు ${agent.name}. నేను VoiceOS AI ద్వారా మీ సహాయం కోసం నియమించబడిన వర్చువల్ వాయిస్ ఎంప్లాయ్.`;
+              } else if (agent.language === "Tamil") {
+                reply = `என் பெயர் ${agent.name}. நான் VoiceOS AI ஆல் உருவாக்கப்பட்ட ஒரு மெய்நிகர் குரல் பணியாளர்.`;
+              } else if (agent.language === "Hindi") {
+                reply = `मेरा नाम ${agent.name} है। मैं VoiceOS AI द्वारा निर्मित एक वर्चुअल वॉयस कर्मचारी हूँ।`;
+              } else if (agent.language === "Malayalam") {
+                reply = `എന്റെ പേര് ${agent.name} എന്നാണ്. ഞാൻ VoiceOS AI രൂപകൽപ്പന ചെയ്ത ഒരു വെർച്വൽ ജീവനക്കാരനാണ്.`;
+              } else {
+                reply = `My name is ${agent.name}. I am an automated voice employee created by VoiceOS AI to assist you.`;
+              }
+              summary = "Simulated intent matching: Identity";
+              outcome = "Information provided";
             }
-            summary = "Offline Fallback: No matching FAQ found.";
-            outcome = "General Fallback";
+            else if (isTransfer) {
+              if (agent.language === "Kannada") {
+                reply = "ಖಂಡಿತ, ನಿಮ್ಮ ಆತುರದ ಕರೆಯನ್ನು ನಮ್ಮ ಹಿರಿಯ ಮ್ಯಾನೇಜರ್‌ಗೆ ವರ್ಗಾಯಿಸುತ್ತಿದ್ದೇನೆ. ದಯವಿಟ್ಟು ಲೈನ್‌ನಲ್ಲಿಯೇ ಇರಿ.";
+              } else if (agent.language === "Telugu") {
+                reply = "తప్పకుండా, మీ కాల్‌ను మా సీనియర్ మేనేజర్‌కు బదిలీ చేస్తున్నాను. దయచేసి లైన్‌లో ఉండండి.";
+              } else if (agent.language === "Tamil") {
+                reply = "நிச்சயமாக, உங்கள் அழைப்பை எங்கள் மூத்த மேலாளருக்கு மாற்றுகிறேன். தயவுசெய்து லைனில் காத்திருங்கள்.";
+              } else if (agent.language === "Hindi") {
+                reply = "बिल्कुल, मैं आपकी कॉल हमारे सीनियर मैनेजर को ट्रांसफर कर रहा हूँ। कृपया लाइन पर बने रहें।";
+              } else if (agent.language === "Malayalam") {
+                reply = "തീർച്ചയായും, ഞാൻ നിങ്ങളുടെ കോൾ ഞങ്ങളുടെ സീനിയർ മാനേജർക്ക് കൈമാറാം. ദയവായി ലൈനിൽ തുടരുക.";
+              } else {
+                reply = "Certainly. I am transferring your call to our service supervisor immediately. Please hold.";
+              }
+              escalated = true;
+              summary = "Simulated intent matching: Human Transfer Escalation";
+              outcome = "Human Escalation";
+            }
+            else if (isScheduling) {
+              if (agent.language === "Kannada") {
+                reply = "ಖಂಡಿತ! ನಿಮ್ಮ ಅನುಕೂಲಕ್ಕೆ ತಕ್ಕಂತೆ ಉಚಿತ ಸಮಾಲೋಚನೆ ಹಾಗೂ ಡೆಮೊ ಸಮಯವನ್ನು ನಿಗದಿಪಡಿಸೋಣವೇ? ನಾಳೆ ಮಧ್ಯಾಹ್ನ ೩ ಗಂಟೆ ಓಕೆನಾ?";
+              } else if (agent.language === "Telugu") {
+                reply = "తప్పకుండా! మీ అనుకూలత ప్రకారం ఒక ఉచిత సంప్రదింపు మరియు డెమో సమయాన్ని షెడ్యూల్ చేద్దామా? రేపు మధ్యాహ్నం 3 గంటలకు ఓకేనా?";
+              } else if (agent.language === "Tamil") {
+                reply = "நிச்சயமாக! உங்கள் வசதிக்கேற்ப இலவச ஆலோசனையையும் டெமோவையும் பதிவு செய்யலாமா? நாளை मதியம் 3 மணி உங்களுக்கு வசதியாக இருக்குமா?";
+              } else if (agent.language === "Hindi") {
+                reply = "ज़रूर! क्या हम आपकी सुविधा के अनुसार एक मुफ्त परामर्श और डेमो बुक करें? क्या कल दोपहर 3 बजे का समय सही रहेगा?";
+              } else if (agent.language === "Malayalam") {
+                reply = "തീർച്ചയായും! നിങ്ങളുടെ സൗകര്യാനുസരണം ഒരു സൌജന്യ ഡെമോ ബുക്ക് ചെയ്യട്ടെയോ? നാളെ ഉച്ചയ്ക്ക് 3 മണിക്ക് സൗകര്യപ്രദമാണോ?";
+              } else {
+                reply = "Absolutely! Let's schedule a free demo and consultation callback for your business. Does tomorrow at 3 PM work for you?";
+              }
+              bookDate = new Date(Date.now() + 86400000).toISOString().split("T")[0]; // tomorrow
+              bookTime = "15:00";
+              bookNotes = "Demo booking requested from call simulator.";
+              summary = "Simulated intent matching: Demo Booking";
+              outcome = "Appointment Confirmed";
+            }
+            else if (isBusiness) {
+              if (agent.language === "Kannada") {
+                reply = "VoiceOS AI ಎಂಬುದು ಕೃತಕ ಬುದ್ಧಿಮತ್ತೆ ಆಧಾರಿತ ಧ್ವನಿ ನೌಕರರ ವೇದಿಕೆಯಾಗಿದೆ. ಇದು ಗ್ರಾಹಕರ ಕರೆಗಳಿಗೆ ಉತ್ತರಿಸಲು, ಲೀಡ್‌ಗಳನ್ನು ಕ್ವಾಲಿಫೈ ಮಾಡಲು ಮತ್ತು ಅಪಾಯಿಂಟ್‌ಮೆಂಟ್‌ಗಳನ್ನು ಬುಕ್ ಮಾಡಲು ಸಹಾಯ ಮಾಡುತ್ತದೆ.";
+              } else if (agent.language === "Telugu") {
+                reply = "VoiceOS AI అనేది ఆర్టిఫిషియల్ ఇంటెలిజెన్స్ ఆధారిత వాయిస్ ఎంప్లాయ్ ప్లాట్‌ఫారమ్. ఇది మీ కస్టమర్ల కాల్స్ ఆన్సర్ చేయడానికి మరియు మీటింగ్‌లు బుక్ చేయడానికి సహాయపడుతుంది.";
+              } else if (agent.language === "Tamil") {
+                reply = "VoiceOS AI என்பது செயற்கை நுண்ணறிவு அடிப்படையிலான குரல் பணியாளர் தளமாகும். இது வாடிக்கையாளர் அழைப்புகளுக்கு பதிலளிக்கவும், முன்பதிవు செய்யவும் உதவுகிறது.";
+              } else if (agent.language === "Hindi") {
+                reply = "VoiceOS AI एक आर्टिफ़िशियल इंटेलिजेंस आधारित वॉयस कर्मचारी प्लेटफ़ॉर्म है। यह आपके ग्राहकों की कॉल का उत्तर देने और लीड्स बुक करने में मदद करता है।";
+              } else if (agent.language === "Malayalam") {
+                reply = "VoiceOS AI എന്നത് ആർട്ടിഫിഷ്യൽ ഇന്റലിജൻസ് അടിസ്ഥാനമാക്കിയുള്ള ഒരു വോയ്സ് പ്ലാറ്റ്ഫോമാണ്. ഇത് ഉപഭോക്താക്കളുടെ കോളുകൾക്ക് മറുപടി നൽകാനും മീറ്റിംഗുകൾ ബുക്ക് ചെയ്യാനും സഹായിക്കുന്നു.";
+              } else {
+                reply = "VoiceOS AI provides automated conversational voice employees that answer customer calls, qualify leads, and book appointments 24/7.";
+              }
+              summary = "Simulated intent matching: Platform Inquiry";
+              outcome = "Information provided";
+            }
+            else {
+              // Fallback to default
+              if (agent.language === "Kannada") {
+                reply = agent.fallback_response || "ಕ್ಷಮಿಸಿ, ಆ ಬಗ್ಗೆ ನನ್ನ ಹತ್ತಿರ ಮಾಹಿತಿ ಇಲ್ಲ. ಬೇರೆ ಸಹಾಯ ಬೇಕಾಗಿದೆಯೇ?";
+              } else if (agent.language === "Telugu") {
+                reply = agent.fallback_response || "క్షమించండి, ఆ సమాచారం నా దగ్గర లేదు. మరి ఏదైనా సహాయం కావాలా?";
+              } else if (agent.language === "Tamil") {
+                reply = agent.fallback_response || "மன்னிக்கவும், அந்த தகவல் என்னிடம் இல்லை. வேறு ஏதேனும் உதவி தேவையா?";
+              } else if (agent.language === "Hindi") {
+                reply = agent.fallback_response || "माफ़ कीजिये, मेरे पास वह जानकारी नहीं है। क्या कोई अन्य सहायता चाहिए?";
+              } else if (agent.language === "Malayalam") {
+                reply = agent.fallback_response || "ക്ഷമിക്കണം, ആ വിവരങ്ങൾ എന്റെ പക്കലില്ല. മറ്റ് എന്തെങ്കിലും സഹായം ആവശ്യമുണ്ടോ?";
+              } else {
+                reply = agent.fallback_response || "I'm sorry, I don't have that information. How else can I assist you?";
+              }
+              summary = "Offline Fallback: No matching FAQ found.";
+              outcome = "General Fallback";
+            }
           }
           
           sentiment = "neutral";
