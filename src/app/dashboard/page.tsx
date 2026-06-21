@@ -1192,6 +1192,13 @@ export default function DashboardPage() {
 
                       <div className="flex gap-2">
                         <button
+                          className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-[10px] font-bold cursor-pointer transition-all flex items-center gap-1"
+                          onClick={() => router.push(`/chat/${ag.id}`)}
+                        >
+                          <Phone className="h-3 w-3" />
+                          Test Call
+                        </button>
+                        <button
                           className="px-2.5 py-1.5 bg-slate-950 border border-slate-800 hover:bg-slate-850 hover:text-white rounded-lg text-[10px] font-bold cursor-pointer transition-all"
                           onClick={() => startEditAgent(ag)}
                         >
