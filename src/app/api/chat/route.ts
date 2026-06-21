@@ -27,14 +27,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Missing message, agentId, or conversationId" }, { status: 400 });
     }
 
-    // Verify OpenAI integration
-    if (!openaiKey || !openai) {
-      console.error("[OpenAI API Failure] Component: OpenAI GPT-4o - Missing OPENAI_API_KEY environment variable. Local sandbox rule-based fallback is disabled.");
-      return NextResponse.json({ 
-        reply: "Error: OpenAI API Key is missing. Production conversation engine is required.",
-        error: "Missing OPENAI_API_KEY environment variable"
-      }, { status: 500 });
-    }
+    // Verify OpenAI integration early check bypassed for offline fallback support
+
 
     // 1. Load Agent
     const agent = await dbService.getAgent(agentId);
@@ -178,6 +172,9 @@ You will format your complete response as a JSON string with the following field
       let jsonText = "";
 
       try {
+        if (!openaiKey || !openai) {
+          throw { status: 429, message: "OpenAI API Key is missing. Triggering offline local FAQ/RAG matching fallback mode." };
+        }
         const response = await openai.chat.completions.create({
           model: "gpt-4o",
           response_format: { type: "json_object" },
@@ -248,9 +245,19 @@ You will format your complete response as a JSON string with the following field
             summary = `Offline FAQ Match: ${bestMatchFaq.question}`;
             outcome = "Information provided (local FAQ)";
           } else {
-            reply = agent.fallback_response || (agent.language === "Kannada"
-              ? "ಕ್ಷಮಿಸಿ, ಆ ಬಗ್ಗೆ ನನ್ನ ಹತ್ತಿರ ಮಾಹಿತಿ ಇಲ್ಲ. ನನ್ನ ಮ್ಯಾನೇಜರ್‌ನೊಂದಿಗೆ ಮಾತನಾಡಲು ವರ್ಗಾಯಿಸಲೇ?"
-              : "I'm sorry, I don't have that information. Let me check with a live agent.");
+            if (agent.language === "Kannada") {
+              reply = agent.fallback_response || "ಕ್ಷಮಿಸಿ, ಆ ಬಗ್ಗೆ ನನ್ನ ಹತ್ತಿರ ಮಾಹಿತಿ ಇಲ್ಲ. ಬೇರೆ ಸಹಾಯ ಬೇಕಾಗಿದೆಯೇ?";
+            } else if (agent.language === "Telugu") {
+              reply = agent.fallback_response || "క్షమించండి, ఆ సమాచారం నా దగ్గర లేదు. మరి ఏదైనా సహాయం కావాలా?";
+            } else if (agent.language === "Tamil") {
+              reply = agent.fallback_response || "மன்னிக்கவும், அந்த தகவல் என்னிடம் இல்லை. வேறு ஏதேனும் உதவி தேவையா?";
+            } else if (agent.language === "Hindi") {
+              reply = agent.fallback_response || "माफ़ कीजिये, मेरे पास वह जानकारी नहीं है। क्या कोई अन्य सहायता चाहिए?";
+            } else if (agent.language === "Malayalam") {
+              reply = agent.fallback_response || "ക്ഷമിക്കണം, ആ വിവരങ്ങൾ എന്റെ പക്കലില്ല. മറ്റ് എന്തെങ്കിലും സഹായം ആവശ്യമുണ്ടോ?";
+            } else {
+              reply = agent.fallback_response || "I'm sorry, I don't have that information. How else can I assist you?";
+            }
             summary = "Offline Fallback: No matching FAQ found.";
             outcome = "General Fallback";
           }
